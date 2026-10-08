@@ -1,16 +1,16 @@
-# Findastra Presence (Anthropic)
+# Anthropic Discord Presence
 
 Shows the exact Anthropic model you're using in Claude Code on your Discord profile, with your project, an elapsed timer and a swirling galaxy.
 
 ![Swirling five-arm galaxy](public/galaxy-card.gif)
 
-**[⬇ Download for Windows](https://github.com/findastra/findastra-discord-presence/raw/main/downloads/findastra-presence-anthropic.zip)** · Part of [Findastra Discord Presence](../README.md)
+**[⬇ Download for Windows](https://github.com/findastra/findastra-discord-presence/raw/main/downloads/anthropic-discord-presence.zip)** · Part of [Findastra Discord Presence](../README.md)
 
 ## Start it
 
 1. Install [Node.js 24 or later](https://nodejs.org/en/download) if you don't have it.
 2. Unzip the download anywhere you like.
-3. Double-click **Start Findastra Presence.cmd**. Your browser opens the controls.
+3. Double-click **Start Anthropic Discord Presence.cmd**. Your browser opens the controls.
 4. Click **Automatic**. Keep Discord desktop open, with activity sharing on in Discord's settings.
 5. Optional: double-click **Enable Automatic Startup.cmd** once so it starts with Windows.
 

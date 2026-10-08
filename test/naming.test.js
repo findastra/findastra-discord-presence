@@ -6,12 +6,14 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const files = ['README.md', 'CLAUDE.md', ...['openai', 'anthropic'].flatMap(app =>
+// Every app in the repo: [folder, company as written on the card].
+const apps = [['openai-discord-presence', 'OpenAI'], ['anthropic-discord-presence', 'Anthropic']];
+const files = ['README.md', 'CLAUDE.md', 'ADDING-A-MODEL.md', ...apps.flatMap(([app]) =>
   ['README.md', 'public/index.html', 'public/app.js', 'src/server.js', 'src/launch.js', 'scripts/startup.js', 'src/windows-startup.js', 'package.json'].map(f => `${app}/${f}`))];
 const forbidden = [
-  [/\b(OpenAI|Anthropic|Claude|Astra) Presence\b/, 'product named after a company or model; use "Findastra Presence (OpenAI)" / "(Anthropic)"'],
+  [/\b(OpenAI|Anthropic|Claude|Astra) Presence\b/, 'app titles are "<Company> Discord Presence"'],
+  [/Findastra Presence/, 'the repo is Findastra Discord Presence; the apps are "<Company> Discord Presence"'],
   [/\bClaude model\b/i, 'pair the companies: "Anthropic model"'],
-  [/\b(openai|anthropic|claude|astra)-discord-presence\b/, 'old repository name'],
   [/findastra\.github\.io\/(openai|anthropic|astra|claude)/, 'old public page'],
 ];
 
@@ -20,20 +22,21 @@ test('user-facing text follows the naming rules', () => {
   for (const file of files) {
     const lines = readFileSync(join(root, file), 'utf8').split('\n');
     lines.forEach((line, i) => {
-      for (const [pattern, why] of forbidden) {
-        // Allowed on purpose: CLAUDE.md quoting the rules, and the list of old launcher files to delete.
-        if (file === 'CLAUDE.md' && /Never name the product|pairs the companies/.test(line)) continue;
-        if (line.includes('for (const legacy of')) continue;
-        if (pattern.test(line)) problems.push(`${file}:${i + 1}: ${why}\n    ${line.trim().slice(0, 120)}`);
-      }
+      // Allowed on purpose: CLAUDE.md quoting a rule, and the list of old launcher files to delete.
+      if (file === 'CLAUDE.md' && line.includes('pairs the companies')) return;
+      if (line.includes('for (const legacy of')) return;
+      for (const [pattern, why] of forbidden) if (pattern.test(line)) problems.push(`${file}:${i + 1}: ${why}\n    ${line.trim().slice(0, 120)}`);
     });
   }
   assert.deepEqual(problems, [], '\n' + problems.join('\n'));
 });
 
-test('both editions use the matching product names and card titles', () => {
-  for (const [app, title] of [['openai', 'OpenAI'], ['anthropic', 'Anthropic']]) {
-    assert.match(readFileSync(join(root, app, 'README.md'), 'utf8'), new RegExp(`^# Findastra Presence \\(${title}\\)`));
-    assert.match(readFileSync(join(root, app, 'src/presence.js'), 'utf8'), new RegExp(`name: '${title}'`));
+test('each app uses its folder name for its title, start file and card title', () => {
+  for (const [app, company] of apps) {
+    const title = `${company} Discord Presence`;
+    assert.match(readFileSync(join(root, app, 'README.md'), 'utf8'), new RegExp(`^# ${title}\\n`));
+    assert.match(readFileSync(join(root, app, 'src/presence.js'), 'utf8'), new RegExp(`name: '${company}'`));
+    readFileSync(join(root, app, `Start ${title}.cmd`));   // throws if the start file is missing
+    assert.match(readFileSync(join(root, 'scripts/package.mjs'), 'utf8'), new RegExp(`'${app}'`));
   }
 });

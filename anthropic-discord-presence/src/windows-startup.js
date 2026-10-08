@@ -7,10 +7,10 @@ function target() {
   return join(process.env.APPDATA, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
 }
 export function startupEnabled() {
-  try { return existsSync(join(target(), 'Findastra Presence (Anthropic).vbs')); } catch { return false; }
+  try { return existsSync(join(target(), 'Anthropic Discord Presence.vbs')); } catch { return false; }
 }
 export function setStartup(enabled) {
-  const dir = target(); const path = join(dir, 'Findastra Presence (Anthropic).vbs');
+  const dir = target(); const path = join(dir, 'Anthropic Discord Presence.vbs');
   // Remove the launcher from before the rename so the app never starts twice.
   for (const legacy of ["Anthropic Presence.vbs", "Claude Presence.vbs"]) { try { unlinkSync(join(dir, legacy)); } catch (error) { if (error.code !== 'ENOENT') throw error; } }
   if (!enabled) {

@@ -107,7 +107,7 @@ const server = http.createServer(async (req, res) => {
   if (req.headers.host !== `127.0.0.1:${port}`) return send(res, 403, { error: 'Local requests only.' });
   try {
     if (req.method === 'GET' && req.url === '/api/status') {
-      return send(res, 200, { app: 'findastra-presence-openai', config, mode: presence.mode, startedAt: presence.startedAt, published,
+      return send(res, 200, { app: 'openai-discord-presence', config, mode: presence.mode, startedAt: presence.startedAt, published,
         connected: rpc.ready, message, startupEnabled: startupEnabled(), project: currentProject(), model: detection.model, effortLabel: modelLabel(detection.model) ? effortLabel(detection.effort) : '', modelLabel: modelLabel(detection.model) || 'GPT-6 Astra', detection: detection.message });
     }
     if (req.method === 'POST') {
@@ -154,7 +154,7 @@ const server = http.createServer(async (req, res) => {
 server.requestTimeout = 10000;
 server.headersTimeout = 10000;
 server.on('error', error => {
-  console.error(error.code === 'EADDRINUSE' ? `Findastra Presence (OpenAI) may already be running. Open ${origin}` : error.message);
+  console.error(error.code === 'EADDRINUSE' ? `OpenAI Discord Presence may already be running. Open ${origin}` : error.message);
   clearInterval(interval);
   rpc.disconnect();
   process.exitCode = 1;
@@ -173,6 +173,6 @@ async function shutdown() {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 server.listen(port, '127.0.0.1', () => {
-  console.log(`Findastra Presence (OpenAI): ${origin}\nClose with Quit app or Ctrl+C.`);
+  console.log(`OpenAI Discord Presence: ${origin}\nClose with Quit app or Ctrl+C.`);
   void sync();
 });

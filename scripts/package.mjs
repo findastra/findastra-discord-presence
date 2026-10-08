@@ -8,11 +8,13 @@ import { crc32 } from 'node:zlib';
 const root = fileURLToPath(new URL('../', import.meta.url));
 mkdirSync(join(root, 'downloads'), { recursive: true });
 
-for (const app of ['openai', 'anthropic']) {
-  const dir = join(root, app), name = `findastra-presence-${app}`;
+// Every app folder in the repo; each becomes downloads/<folder>.zip unzipping into <folder>/.
+const apps = [['openai-discord-presence', 'OpenAI Discord Presence'], ['anthropic-discord-presence', 'Anthropic Discord Presence']];
+for (const [app, title] of apps) {
+  const dir = join(root, app), name = app;
   const files = [
     [join(root, 'LICENSE'), 'LICENSE'],
-    ...['README.md', 'package.json', 'Start Findastra Presence.cmd', 'Enable Automatic Startup.cmd', 'scripts/startup.js',
+    ...['README.md', 'package.json', `Start ${title}.cmd`, 'Enable Automatic Startup.cmd', 'scripts/startup.js',
         ...readdirSync(join(dir, 'src')).filter(f => f.endsWith('.js')).map(f => `src/${f}`),
         ...['index.html', 'style.css', 'app.js', 'galaxy.png', 'galaxy.gif'].map(f => `public/${f}`)].map(f => [join(dir, f), f]),
   ];

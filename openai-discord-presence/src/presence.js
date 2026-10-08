@@ -52,7 +52,7 @@ export function effortLabel(id) {
 // The project's own Discord application. Application IDs are public, so friends can use it without any setup.
 export const BUILT_IN_CLIENT_ID = '1548931548986875954';
 
-export const GALAXY_URL = 'https://raw.githubusercontent.com/findastra/findastra-discord-presence/main/openai/public/galaxy-card.gif?v=6';
+export const GALAXY_URL = 'https://raw.githubusercontent.com/findastra/findastra-discord-presence/main/openai-discord-presence/public/galaxy-card.gif?v=7';
 
 export function activity(startedAt, image = GALAXY_URL, project = '', model = '', effort = '') {
   if (startedAt === null) return null;

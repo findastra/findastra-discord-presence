@@ -1,8 +1,8 @@
 {
-  "name": "findastra-presence-anthropic",
+  "name": "openai-discord-presence",
   "version": "0.1.0",
   "private": true,
-  "description": "A tiny local Discord Rich Presence companion for Claude.",
+  "description": "A tiny local Discord Rich Presence companion for GPT-6 Astra.",
   "type": "module",
   "engines": { "node": ">=24.0.0" },
   "scripts": { "start": "node src/server.js", "test": "node --test" },

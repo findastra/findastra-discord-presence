@@ -54,7 +54,7 @@ async function refresh() {
       : 'Manual sessions stay on until you stop them or quit this app.';
     drawTimer();
   } catch {
-    $('status').textContent = 'The local companion is offline. Open Start Findastra Presence (OpenAI) again.';
+    $('status').textContent = 'The local companion is offline. Open Start OpenAI Discord Presence again.';
     $('dot').className = '';
     $('badge').textContent = 'OFFLINE';
     state = null;
@@ -124,7 +124,7 @@ if (hosted) {
   $('mode-note').textContent = 'Try the timer here. Download the companion to share it on Discord.';
   $('status').textContent = 'Discord presence needs the companion running on your Windows computer.';
   if (location.protocol === 'file:') {
-    $('download').querySelector('a').href = 'https://github.com/findastra/findastra-discord-presence/raw/main/downloads/findastra-presence-openai.zip';
+    $('download').querySelector('a').href = 'https://github.com/findastra/findastra-discord-presence/raw/main/downloads/openai-discord-presence.zip';
   }
 } else void refresh();
 setInterval(refresh, 2000);
