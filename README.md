@@ -62,4 +62,4 @@ Open [findastra-discord-presence-20261008.html](findastra-discord-presence-20261
 
 Limits: this browser interface does not install or start native programs. Where an existing web app is available, the Cage opens that app. Draft controls store their data in the current browser and do not imply connected services. Existing application instructions above still apply.
 
-Version [v0.1.0-20261008-pets](https://github.com/findastra/findastra-discord-presence/tree/v0.1.0-20261008-pets). Added with OpenAI Codex (GPT-6), 2026-10-08.
+Version [v0.1.1-20261008-pets](https://github.com/findastra/findastra-discord-presence/tree/v0.1.1-20261008-pets). Added with OpenAI Codex (GPT-6), 2026-10-08.

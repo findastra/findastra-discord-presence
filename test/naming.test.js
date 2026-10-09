@@ -34,7 +34,7 @@ test('user-facing text follows the naming rules', () => {
 test('each app uses its folder name for its title, start file and card title', () => {
   for (const [app, company] of apps) {
     const title = `${company} Discord Presence`;
-    assert.match(readFileSync(join(root, app, 'README.md'), 'utf8'), new RegExp(`^# ${title}\\n`));
+    assert.match(readFileSync(join(root, app, 'README.md'), 'utf8'), new RegExp(`^# ${title}\\r?\\n`));
     assert.match(readFileSync(join(root, app, 'src/presence.js'), 'utf8'), new RegExp(`name: '${company}'`));
     readFileSync(join(root, app, `Start ${title}.cmd`));   // throws if the start file is missing
     assert.match(readFileSync(join(root, 'scripts/package.mjs'), 'utf8'), new RegExp(`'${app}'`));
