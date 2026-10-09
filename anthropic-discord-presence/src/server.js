@@ -18,7 +18,7 @@ try { config = validateConfig(JSON.parse(readFileSync(configPath, 'utf8'))); } c
 const presence = new Presence();
 if (config.automaticOnStart) presence.setMode('auto');
 const rpc = new DiscordRPC();
-let detection = { active: false, model: '', message: 'Choose Automatic to detect the Claude app or Claude Code.' };
+let detection = { active: false, model: '', message: 'Choose Automatic for recent Claude Code conversations, or Start session for regular Claude desktop chat.' };
 let currentSession = selectSession(detection, config);
 let message = config.clientId ? 'Ready. Choose how to share.' : 'One-time setup: add your Discord Application ID.';
 let published = false;

@@ -1,4 +1,3 @@
-import { execFile } from 'node:child_process';
 import { existsSync, readdirSync, statSync, openSync, fstatSync, readSync, closeSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
@@ -25,8 +24,32 @@ const transcriptCache = new Map();
 const MAX_CACHED_TRANSCRIPTS = 64;
 const MAX_RECORD_BYTES = 8 * 1024 * 1024;
 const EFFORTS = new Set(['minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
-const emptyInfo = () => ({ model: '', effort: '', cwd: '' });
+const emptyInfo = () => ({ model: '', effort: '', cwd: '', activity: null });
 const fileSignature = stat => `${stat.dev}:${stat.ino}:${stat.birthtimeMs}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
+const validModel = value => typeof value === 'string' && /^claude-[\w.\[\]-]{1,60}$/.test(value) ? value : '';
+const validCwd = value => typeof value === 'string' && value.length <= 4096 ? value : '';
+const validEffort = row => EFFORTS.has(row.perTurnEffort ?? row.effort) ? row.perTurnEffort ?? row.effort : '';
+
+// Bookkeeping, tool results, synthetic replies, and an open app are not evidence of use.
+// A new human input is active but has no confirmed model until its assistant reply arrives.
+function conversationActivity(row) {
+  if (row.isMeta === true || row.isSidechain === true || row.isApiErrorMessage === true) return null;
+  const at = typeof row.timestamp === 'string' ? Date.parse(row.timestamp) : NaN;
+  if (!Number.isFinite(at) || at <= 0) return null;
+  const message = row.message;
+  if (!message || typeof message !== 'object') return null;
+  if (row.type === 'assistant' && message.role === 'assistant') {
+    if (typeof message.model !== 'string' || !message.model || message.model === '<synthetic>') return null;
+    const model = validModel(message.model);
+    return { at, model, effort: model ? validEffort(row) : '', cwd: validCwd(row.cwd) };
+  }
+  if (row.type !== 'user' || message.role !== 'user' || (row.turnOrigin && row.turnOrigin !== 'human')) return null;
+  const content = message.content;
+  const humanInput = typeof content === 'string' ? content.trim().length > 0 : Array.isArray(content)
+    && content.some(block => block && ((block.type === 'text' && typeof block.text === 'string' && block.text.trim())
+      || block.type === 'image' || block.type === 'document'));
+  return humanInput ? { at, model: '', effort: '', cwd: validCwd(row.cwd) } : null;
+}
 
 // Read complete records backward, including records larger than one read buffer. Fragments are
 // joined only once per record, so large tool results cannot hide or corrupt earlier metadata.
@@ -59,14 +82,14 @@ function* reverseRecords(fd, size) {
 
 // Only metadata is cached, never conversation text. File identity and modification metadata
 // invalidate the bounded cache on appends, truncation, replacement, or rewrites.
-export function transcriptInfo(file) {
+function transcriptMetadata(file, requireActivity = false) {
   let fd;
   try {
     fd = openSync(file, 'r');
     const stat = fstatSync(fd);
     const signature = fileSignature(stat);
     const cached = transcriptCache.get(file);
-    if (cached?.signature === signature) {
+    if (cached?.signature === signature && (!requireActivity || cached.activityRead)) {
       transcriptCache.delete(file);
       transcriptCache.set(file, cached);
       return { ...cached.info };
@@ -78,29 +101,33 @@ export function transcriptInfo(file) {
       let row;
       try { row = JSON.parse(line); } catch { continue; } // Ignore incomplete writes and malformed records.
       if (!row || typeof row !== 'object' || Array.isArray(row)) continue;
+      info.activity ??= conversationActivity(row);
       if (!cwdFound && typeof row.cwd === 'string') {
-        info.cwd = row.cwd.length <= 4096 ? row.cwd : '';
+        info.cwd = validCwd(row.cwd);
         cwdFound = true;
       }
       if (!modelFound && row.type === 'assistant' && row.message && typeof row.message === 'object'
         && row.message.model !== '<synthetic>') {
-        const model = row.message.model;
-        info.model = typeof model === 'string' && /^claude-[\w.\[\]-]{1,60}$/.test(model) ? model : '';
-        const effort = row.perTurnEffort ?? row.effort;
-        info.effort = info.model && EFFORTS.has(effort) ? effort : '';
+        info.model = validModel(row.message.model);
+        info.effort = info.model ? validEffort(row) : '';
         modelFound = true;
       }
-      if (modelFound && cwdFound) break;
+      if (modelFound && cwdFound && (!requireActivity || info.activity)) break;
     }
     if (fileSignature(fstatSync(fd)) !== signature) return emptyInfo();
     transcriptCache.delete(file);
-    transcriptCache.set(file, { signature, info });
+    transcriptCache.set(file, { signature, info, activityRead: requireActivity || Boolean(info.activity) });
     if (transcriptCache.size > MAX_CACHED_TRANSCRIPTS) transcriptCache.delete(transcriptCache.keys().next().value);
     return { ...info };
   } catch {
     transcriptCache.delete(file);
     return emptyInfo();
   } finally { if (fd !== undefined) closeSync(fd); }
+}
+
+export function transcriptInfo(file) {
+  const { model, effort, cwd } = transcriptMetadata(file);
+  return { model, effort, cwd };
 }
 
 export function transcriptModel(file) {
@@ -122,7 +149,7 @@ export function sessionProject(cwd) {
   return cwd && existsSync(cwd) ? folderProject(cwd) : '';
 }
 
-// Transcripts written in the last few minutes, newest first. Reads file metadata only.
+// File modification times only narrow the scan; actual event timestamps decide activity below.
 export function recentClaudeCode(home = process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'), now = Date.now()) {
   const found = [];
   try {
@@ -144,23 +171,15 @@ export function isRecent(mtimeMs, now = Date.now()) {
   return mtimeMs > 0 && age >= -5000 && age < IDLE_MS;
 }
 
-// True when the Claude desktop app is running (Windows only).
-export function claudeDesktopRunning() {
-  if (process.platform !== 'win32') return Promise.resolve(false);
-  return new Promise(resolve => {
-    execFile('tasklist', ['/FI', 'IMAGENAME eq claude.exe', '/FO', 'CSV', '/NH'], { windowsHide: true, timeout: 3000 },
-      (error, stdout) => resolve(!error && /"claude\.exe"/i.test(stdout)));
-  });
-}
-
-export async function detectClaude({ now = Date.now(), home, desktop = claudeDesktopRunning } = {}) {
+export async function detectClaude({ now = Date.now(), home } = {}) {
   try {
     const recent = recentClaudeCode(home, now);
-    if (recent.length) {
+    const active = recent.map(({ file }) => transcriptMetadata(file, true).activity)
+      .filter(event => event && isRecent(event.at, now)).sort((a, b) => b.at - a.at);
+    if (active.length) {
       const sessions = [];
       const seen = new Set();
-      for (const { file } of recent) {
-        const { model, effort, cwd } = transcriptInfo(file);
+      for (const { model, effort, cwd } of active) {
         const session = { project: sessionProject(cwd), model, effort };
         const key = JSON.stringify(session);
         if (!seen.has(key)) { seen.add(key); sessions.push(session); }
@@ -169,9 +188,7 @@ export async function detectClaude({ now = Date.now(), home, desktop = claudeDes
       const projects = [...new Set(sessions.map(session => session.project).filter(Boolean))];
       return { active: true, model, effort, project, projects, sessions, message: `Recent ${modelLabel(model) || 'Claude Code'} activity detected.` };
     }
-    // The desktop chat doesn't record its model, effort or folder locally, so this shows plain "Claude".
-    if (await desktop()) return { active: true, model: '', effort: '', project: '', message: 'Claude desktop app is open (model not visible to this app).' };
-    return { active: false, model: '', effort: '', project: '', message: 'Waiting for the Claude app or Claude Code.' };
+    return { active: false, model: '', effort: '', project: '', message: 'Waiting for recent Claude conversation activity.' };
   } catch {
     return { active: false, model: '', effort: '', project: '', message: 'Automatic detection unavailable. Manual mode still works.' };
   }

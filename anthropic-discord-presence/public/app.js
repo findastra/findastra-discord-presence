@@ -50,7 +50,7 @@ async function refresh() {
     $('auto').setAttribute('aria-pressed', String(state.mode === 'auto'));
     $('manual').textContent = state.mode === 'manual' ? 'Session started' : 'Start session';
     $('mode-note').textContent = state.mode === 'auto'
-      ? 'Automatic shares recent Claude Code activity or an open Claude desktop app. Exact model names require current local metadata.'
+      ? 'Automatic shows Claude Code activity from the last 5 minutes, including supported desktop Code sessions. For regular Claude desktop chat, use Start session and Stop sharing.'
       : 'Manual sessions stay on until you stop them or quit this app.';
     drawTimer();
   } catch {

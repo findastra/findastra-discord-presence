@@ -48,32 +48,113 @@ test('exact model ids become friendly names, and the raw id shows on hover', () 
   assert.equal(card.assets.large_text, 'claude-opus-5-5');
   assert.equal(card.assets.large_image, 'claude_bloom');
 });
-test('detector reads Claude Code transcript times and falls back to the desktop app', async () => {
+test('detector requires actual recent conversation events and never falls back to an open desktop app', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'claude-detect-'));
   try {
-    const never = async () => false;
-    assert.equal((await detectClaude({ home: dir, desktop: never })).active, false);
+    const now = Date.now();
+    const timestamp = new Date(now - 1000).toISOString();
+    const assistant = (extra = {}) => ({ type: 'assistant', timestamp, ...extra, message: { role: 'assistant', model: 'claude-opus-5-5' } });
+    let desktopChecks = 0;
+    const desktop = async () => { desktopChecks++; return true; };
+    const detect = () => detectClaude({ home: dir, now, desktop });
+    assert.equal((await detect()).active, false);
     mkdirSync(join(dir, 'projects', 'p1'), { recursive: true });
     const file = join(dir, 'projects', 'p1', 'session-20261008.jsonl'); writeFileSync(file, '{}');
-    assert.equal((await detectClaude({ home: dir, desktop: never })).active, true);
-    const old = new Date(Date.now() - 10 * 60 * 1000); utimesSync(file, old, old);
-    assert.equal((await detectClaude({ home: dir, desktop: never })).active, false);
-    assert.equal((await detectClaude({ home: dir, desktop: async () => true })).active, true);
-    assert.equal((await detectClaude({ home: dir, desktop: async () => { throw new Error('x'); } })).active, false);
-    writeFileSync(file, '{"type":"assistant","message":{"model":"claude-sonnet-5-5","content":"secret"}}\n{"type":"assistant","message":{"model":"<synthetic>"}}\n{"type":"assistant","message":{"model":"claude-opus-5-5"}}\n');
-    const found = await detectClaude({ home: dir, desktop: never });
+    assert.equal((await detect()).active, false);
+    assert.equal(desktopChecks, 0);
+    writeFileSync(file, JSON.stringify(assistant()) + '\n');
+    const found = await detect();
+    assert.equal(found.active, true);
     assert.equal(found.model, 'claude-opus-5-5');
     assert.equal(transcriptModel(join(dir, 'missing-20261008.jsonl')), '');
     const folder = join(dir, 'paper-girl'); mkdirSync(folder);
-    writeFileSync(file, JSON.stringify({ type: 'assistant', cwd: folder, message: { model: 'claude-opus-5-5' } }) + '\n');
-    assert.equal((await detectClaude({ home: dir, desktop: never })).project, 'paper-girl');
+    writeFileSync(file, JSON.stringify(assistant({ cwd: folder })) + '\n');
+    assert.equal((await detect()).project, 'paper-girl');
     // A folder that was moved or deleted must not show its old name.
-    writeFileSync(file, JSON.stringify({ type: 'assistant', cwd: join(dir, 'claude-discord-presence'), message: { model: 'claude-opus-5-5' } }) + '\n');
-    assert.equal((await detectClaude({ home: dir, desktop: never })).project, '');
-    writeFileSync(file, JSON.stringify({ type: 'assistant', cwd: folder, message: { model: 'claude-opus-5-5' } }) + '\n');
-    assert.equal((await detectClaude({ home: dir, desktop: never })).effort, '');
-    writeFileSync(file, '{"type":"assistant","effort":"medium","message":{"model":"claude-opus-5-5"}}\n{"type":"assistant","effort":"high","perTurnEffort":"high","message":{"model":"claude-opus-5-5"}}\n');
-    assert.equal((await detectClaude({ home: dir, desktop: never })).effort, 'high');
+    writeFileSync(file, JSON.stringify(assistant({ cwd: join(dir, 'claude-discord-presence') })) + '\n');
+    assert.equal((await detect()).project, '');
+    writeFileSync(file, JSON.stringify(assistant({ cwd: folder })) + '\n');
+    assert.equal((await detect()).effort, '');
+    writeFileSync(file, JSON.stringify(assistant({ cwd: folder, effort: 'medium', perTurnEffort: 'high' })) + '\n');
+    assert.equal((await detect()).effort, 'high');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('touching old transcripts or appending synthetic and internal records cannot activate Automatic', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'claude-idle-'));
+  try {
+    mkdirSync(join(dir, 'projects', 'p'), { recursive: true });
+    const file = join(dir, 'projects', 'p', 'session-20261008.jsonl');
+    const now = Date.now();
+    const timestamp = new Date(now - 1000).toISOString();
+    const stale = { type: 'assistant', timestamp: new Date(now - 600000).toISOString(), cwd: dir,
+      message: { role: 'assistant', model: 'claude-opus-5-5' } };
+    writeFileSync(file, JSON.stringify(stale) + '\n');
+    utimesSync(file, new Date(now), new Date(now));
+    assert.equal((await detectClaude({ home: dir, now })).active, false);
+    const records = [
+      { type: 'frame-link', timestamp },
+      { type: 'artifact-comment-monitor', timestamp },
+      { type: 'system', timestamp, message: { role: 'assistant', model: 'claude-opus-5-5' } },
+      { type: 'assistant', timestamp, message: { role: 'assistant', model: '<synthetic>' } },
+      { type: 'assistant', timestamp, isApiErrorMessage: true, message: { role: 'assistant', model: 'claude-opus-5-5' } },
+      { type: 'assistant', timestamp, isSidechain: true, message: { role: 'assistant', model: 'claude-opus-5-5' } },
+      { type: 'assistant', timestamp, isMeta: true, message: { role: 'assistant', model: 'claude-opus-5-5' } },
+      { type: 'user', timestamp, message: { role: 'user', content: [{ type: 'tool_result', content: 'completed' }] } },
+      { type: 'user', timestamp, isMeta: true, message: { role: 'user', content: 'internal reminder' } },
+      { type: 'user', timestamp, turnOrigin: 'background', message: { role: 'user', content: 'internal reminder' } },
+    ];
+    appendFileSync(file, records.map(record => JSON.stringify(record)).join('\n') + '\n');
+    assert.equal((await detectClaude({ home: dir, now })).active, false);
+    for (const invalidTimestamp of [undefined, 'invalid', new Date(now + 60000).toISOString()]) {
+      writeFileSync(file, JSON.stringify({ ...stale, timestamp: invalidTimestamp }) + '\n');
+      assert.equal((await detectClaude({ home: dir, now })).active, false);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('Automatic expires cached conversation activity even when the file is unchanged and its mtime is still recent', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'claude-expiry-'));
+  try {
+    mkdirSync(join(dir, 'projects', 'p'), { recursive: true });
+    const file = join(dir, 'projects', 'p', 'session-20261008.jsonl');
+    const now = Date.now();
+    writeFileSync(file, JSON.stringify({ type: 'assistant', timestamp: new Date(now - 60000).toISOString(), cwd: dir,
+      message: { role: 'assistant', model: 'claude-opus-5-5' } }) + '\n');
+    assert.equal((await detectClaude({ home: dir, now })).active, true);
+    const atExpiry = now + 240000;
+    assert.equal(isRecent(statSync(file).mtimeMs, atExpiry), true);
+    assert.equal((await detectClaude({ home: dir, now: atExpiry })).active, false);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('new human input activates generically until a real reply confirms its model and effort', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'claude-input-'));
+  try {
+    mkdirSync(join(dir, 'projects', 'p'), { recursive: true });
+    const file = join(dir, 'projects', 'p', 'session-20261008.jsonl');
+    const now = Date.now();
+    writeFileSync(file, JSON.stringify({ type: 'assistant', timestamp: new Date(now - 600000).toISOString(), cwd: dir, effort: 'high',
+      message: { role: 'assistant', model: 'claude-opus-5-5' } }) + '\n');
+    appendFileSync(file, JSON.stringify({ type: 'user', timestamp: new Date(now - 1000).toISOString(), cwd: dir, turnOrigin: 'human',
+      message: { role: 'user', content: [{ type: 'text', text: 'A new request' }] } }) + '\n');
+    let detection = await detectClaude({ home: dir, now });
+    assert.equal(detection.active, true);
+    assert.equal(detection.model, '');
+    assert.equal(detection.effort, '');
+    assert.equal(detection.sessions[0].model, '');
+    appendFileSync(file, JSON.stringify({ type: 'assistant', timestamp: new Date(now - 500).toISOString(), cwd: dir,
+      effort: 'low', message: { role: 'assistant', model: 'claude-haiku-4-5' } }) + '\n');
+    detection = await detectClaude({ home: dir, now });
+    assert.equal(detection.active, true);
+    assert.equal(detection.model, 'claude-haiku-4-5');
+    assert.equal(detection.effort, 'low');
+    appendFileSync(file, JSON.stringify({ type: 'assistant', timestamp: new Date(now).toISOString(), cwd: dir,
+      effort: 'high', message: { role: 'assistant', model: 'unrecognized-provider' } }) + '\n');
+    detection = await detectClaude({ home: dir, now });
+    assert.equal(detection.active, true);
+    assert.equal(detection.model, '');
+    assert.equal(detection.effort, '');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 test('the card names the effort level next to a known model', () => {
@@ -139,10 +220,13 @@ test('every recently active Claude Code folder is listed for rotation, newest fi
     mkdirSync(join(dir, 'projects', 'a'), { recursive: true }); mkdirSync(join(dir, 'projects', 'b'), { recursive: true });
     const older = join(dir, 'projects', 'a', 'older-20261008.jsonl'), newer = join(dir, 'projects', 'b', 'newer-20261008.jsonl');
     mkdirSync(join(dir, 'paper-girl')); mkdirSync(join(dir, 'fuzzbois'));
-    writeFileSync(older, JSON.stringify({ type: 'assistant', cwd: join(dir, 'paper-girl'), effort: 'low', message: { model: 'claude-haiku-4-5' } }) + '\n');
-    writeFileSync(newer, JSON.stringify({ type: 'assistant', cwd: join(dir, 'fuzzbois'), effort: 'high', message: { model: 'claude-opus-5-5' } }) + '\n');
+    const now = Date.now();
+    writeFileSync(older, JSON.stringify({ type: 'assistant', timestamp: new Date(now - 60000).toISOString(), cwd: join(dir, 'paper-girl'), effort: 'low', message: { role: 'assistant', model: 'claude-haiku-4-5' } }) + '\n');
+    writeFileSync(newer, JSON.stringify({ type: 'assistant', timestamp: new Date(now - 1000).toISOString(), cwd: join(dir, 'fuzzbois'), effort: 'high', message: { role: 'assistant', model: 'claude-opus-5-5' } }) + '\n');
     const minuteAgo = new Date(Date.now() - 60_000); utimesSync(older, minuteAgo, minuteAgo);
-    const found = await detectClaude({ home: dir, desktop: async () => false });
+    // Background writes must not change which conversation is newest.
+    appendFileSync(older, JSON.stringify({ type: 'artifact-comment-monitor', timestamp: new Date(now).toISOString() }) + '\n');
+    const found = await detectClaude({ home: dir, now });
     assert.deepEqual(found.projects, ['fuzzbois', 'paper-girl']);
     assert.deepEqual(found.sessions, [
       { project: 'fuzzbois', model: 'claude-opus-5-5', effort: 'high' },

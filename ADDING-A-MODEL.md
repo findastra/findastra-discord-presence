@@ -27,7 +27,7 @@ Write a `detect…()` function that returns:
 { active, model, effort, project, projects, sessions, message }
 ```
 
-- `active`: true if the AI was used in the last 5 minutes (`IDLE_MS`).
+- `active`: true when supported conversation or usage metadata confirms activity in the last 5 minutes (`IDLE_MS`). An open process or a touched file alone must not activate sharing. For unsupported surfaces, provide manual Start session and Stop sharing.
 - `model`: the exact model id, e.g. `gemini-3-pro`. `effort`: its thinking level if the AI records one, else `''`.
 - `project` / `projects`: the folder name(s) of recent sessions, only when the user turned on project sharing. Use the existing `folderProject()` rules: last folder name only, never a full path, and never a folder that no longer exists.
 - `sessions`: newest-first records of `{ project, model, effort }`. Keep these fields together when rotating the card, and use the same selected record for the local preview and Discord payload. Never infer one session's model from another session.
