@@ -2,10 +2,11 @@ import http from 'node:http';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
-import { BUILT_IN_CLIENT_ID, GALAXY_URL, Presence, activity, validateConfig, modelLabel, effortLabel } from './presence.js';
+import { BUILT_IN_CLIENT_ID, GALAXY_URL, Presence, activity, validateConfig, modelLabel, effortLabel, selectSession } from './presence.js';
 import { detectAstra } from './detector.js';
 import { DiscordRPC } from './rpc.js';
 import { startupEnabled, setStartup } from './windows-startup.js';
+import { SOURCE_IDENTITY } from './source-identity-20261008.js';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const configPath = join(root, '.local', 'config.json');
@@ -18,6 +19,7 @@ const presence = new Presence();
 if (config.automaticOnStart) presence.setMode('auto');
 const rpc = new DiscordRPC();
 let detection = { active: false, model: '', message: 'Choose Automatic to detect recent Codex activity.' };
+let currentSession = selectSession(detection, config);
 let message = config.clientId ? 'Ready. Choose how to share.' : 'One-time setup: add your Discord Application ID.';
 let published = false;
 let lastSent;
@@ -36,6 +38,7 @@ async function sync() {
     // Manual mode also checks, so the card can name the exact model and project.
     if (presence.mode !== 'off') detection = detectAstra(undefined, Date.now(), config.shareProject);
     presence.update(detection.active);
+    currentSession = selectSession(detection, config);
     if (!config.clientId) { message = 'Add your Discord Application ID to connect.'; return; }
     if (presence.startedAt === null) {
       if (rpc.ready && lastSent !== null) await rpc.setActivity(null);
@@ -47,14 +50,14 @@ async function sync() {
     }
     await rpc.connect(config.clientId);
     if (current !== revision || closing) { rerun = true; return; }
-    const payload = activity(presence.startedAt, config.image, currentProject(), detection.model, detection.effort);
+    const payload = activity(presence.startedAt, config.image, currentSession.project, currentSession.model, currentSession.effort);
     const signature = JSON.stringify(payload);
     if (lastSent !== signature) {
       await rpc.setActivity(payload);
       lastSent = signature;
     }
     published = true;
-    message = 'Activity accepted by Discord. Your activity privacy settings control who sees it.';
+    message = 'Activity accepted by Discord. Your settings and Discord client control its visibility; only one card may appear.';
   } catch (error) {
     published = false;
     message = error.message;
@@ -62,15 +65,6 @@ async function sync() {
     running = false;
     if (rerun && !closing) { rerun = false; setImmediate(sync); }
   }
-}
-
-// Several active projects take turns on the card, ROTATE_MS each (Discord allows ~5 updates per 20 s).
-const ROTATE_MS = 15000;
-function currentProject(now = Date.now()) {
-  if (!config.shareProject) return '';
-  if (config.projectName) return config.projectName;
-  const list = detection.projects?.length ? detection.projects : [detection.project].filter(Boolean);
-  return list.length ? list[Math.floor(now / ROTATE_MS) % list.length] : '';
 }
 
 function send(res, status, body, type = 'application/json') {
@@ -107,18 +101,15 @@ const server = http.createServer(async (req, res) => {
   if (req.headers.host !== `127.0.0.1:${port}`) return send(res, 403, { error: 'Local requests only.' });
   try {
     if (req.method === 'GET' && req.url === '/api/status') {
-      return send(res, 200, { app: 'openai-discord-presence', config, mode: presence.mode, startedAt: presence.startedAt, published,
-        connected: rpc.ready, message, startupEnabled: startupEnabled(), project: currentProject(), model: detection.model, effortLabel: modelLabel(detection.model) ? effortLabel(detection.effort) : '', modelLabel: modelLabel(detection.model) || 'GPT-6 Astra', detection: detection.message });
+      return send(res, 200, { app: 'openai-discord-presence', identity: SOURCE_IDENTITY, config, mode: presence.mode, startedAt: presence.startedAt, published,
+        connected: rpc.ready, message, startupEnabled: startupEnabled(), project: currentSession.project, model: currentSession.model, effortLabel: modelLabel(currentSession.model) ? effortLabel(currentSession.effort) : '', modelLabel: modelLabel(currentSession.model) || 'OpenAI', detection: detection.message });
     }
     if (req.method === 'POST') {
       if (req.headers.origin !== origin) return send(res, 403, { error: 'Open the local control panel to make changes.' });
       const input = await jsonBody(req);
       if (req.url === '/api/startup') {
         if (typeof input.enabled !== 'boolean') throw new Error('Choose whether to run on startup.');
-        setStartup(input.enabled);
-        config.automaticOnStart = input.enabled;
-        mkdirSync(join(root, '.local'), { recursive: true });
-        writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+        config = setStartup(input.enabled);
         return send(res, 200, { ok: true });
       }
       if (req.url === '/api/config') {

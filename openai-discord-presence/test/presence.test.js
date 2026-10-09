@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { GALAXY_URL, Presence, isRecentTask, modelLabel, effortLabel, activity, validateConfig } from '../src/presence.js';
+import { GALAXY_URL, Presence, isRecentTask, modelLabel, effortLabel, activity, validateConfig, selectSession } from '../src/presence.js';
 import { detectAstra, folderProject } from '../src/detector.js';
 import { frame, Decoder, DiscordRPC } from '../src/rpc.js';
 import net from 'node:net';
@@ -47,8 +47,8 @@ test('exact model ids become friendly names, and the raw id shows on hover', () 
 });
 test('payload contains only fixed public fields and elapsed timestamp', () => {
   assert.equal(activity(null), null);
-  assert.deepEqual(activity(17), { type: 0, name: 'OpenAI', details: 'Using GPT-6 Astra', state: 'Exploring ideas',
-    timestamps: { start: 17 }, assets: { large_image: GALAXY_URL, large_text: 'GPT-6 Astra' } });
+  assert.deepEqual(activity(17), { type: 0, name: 'OpenAI', details: 'Using OpenAI', state: 'Exploring ideas',
+    timestamps: { start: 17 }, assets: { large_image: GALAXY_URL, large_text: 'OpenAI' } });
   assert.throws(() => validateConfig({ clientId: 'not-a-token' }));
   assert.throws(() => validateConfig({ clientId: '123456789012345678', image: 'http://example.com/image' }));
 });
@@ -108,7 +108,7 @@ test('the card names the effort level next to a known model', () => {
   assert.equal(activity(17, 'astra_galaxy', '', 'gpt-6-astra', 'ultra').details, 'Using GPT-6 Astra on Ultra');
   assert.equal(activity(17, 'astra_galaxy', '', 'gpt-5.6-sol', 'low').details, 'Using GPT-5.6 Sol on Low');
   assert.equal(activity(17, 'astra_galaxy', '', 'gpt-6-astra', '').details, 'Using GPT-6 Astra');
-  assert.equal(activity(17, 'astra_galaxy', '', '', 'high').details, 'Using GPT-6 Astra');
+  assert.equal(activity(17, 'astra_galaxy', '', '', 'high').details, 'Using OpenAI');
   assert.equal(effortLabel('xhigh'), 'Extra High');
   assert.equal(effortLabel('<b>high</b>'), '');
 });
@@ -152,19 +152,62 @@ test('real named-pipe mock verifies handshake, ping/pong, activity ACK, and clea
     assert.deepEqual(packets.filter(p => p.cmd === 'SET_ACTIVITY').map(p => p.args.activity), [activity(123), null]);
   } finally { rpc.disconnect(); sockets.forEach(s => s.destroy()); await new Promise(resolve => server.close(resolve)); }
 });
-test('every recently active Codex chat folder is listed for rotation, newest first', () => {
+test('rotation retains each recent chat model and effort, including chats in the same project', () => {
   const dir = mkdtempSync(join(tmpdir(), 'astra-rotate-'));
   try {
     const db = new DatabaseSync(join(dir, 'state_5.sqlite'));
-    db.exec('CREATE TABLE threads(model TEXT, updated_at INTEGER, archived INTEGER, source TEXT, agent_path TEXT, cwd TEXT, id TEXT, project_id TEXT)');
-    const add = db.prepare('INSERT INTO threads(model, updated_at, archived, source, agent_path, cwd) VALUES (?, ?, 0, ?, NULL, ?)');
+    db.exec('CREATE TABLE threads(model TEXT, reasoning_effort TEXT, updated_at INTEGER, archived INTEGER, source TEXT, agent_path TEXT, cwd TEXT, id TEXT, project_id TEXT)');
+    const add = db.prepare('INSERT INTO threads(model, reasoning_effort, updated_at, archived, source, agent_path, cwd) VALUES (?, ?, ?, 0, ?, NULL, ?)');
     mkdirSync(join(dir, 'paper-girl')); mkdirSync(join(dir, "Mommy's World"));
-    add.run('gpt-6-astra', 990, 'vscode', join(dir, 'paper-girl'));
-    add.run('gpt-6-astra', 999, 'vscode', join(dir, "Mommy's World"));
-    add.run('gpt-6-astra', 100, 'vscode', 'C:\Users\me\Documents\Projects\stale');
+    add.run('gpt-6-sol', 'low', 990, 'vscode', join(dir, 'paper-girl'));
+    add.run('gpt-6-astra', 'ultra', 999, 'vscode', join(dir, "Mommy's World"));
+    add.run('gpt-6-luna', 'medium', 980, 'vscode', join(dir, 'paper-girl'));
+    add.run('gpt-6-astra', 'high', 100, 'vscode', join(dir, 'stale'));
+    add.run('gpt-6-astra', 'high', 1000, '{"subagent":{}}', join(dir, 'paper-girl'));
     db.close();
-    assert.deepEqual(detectAstra(dir, 1_000_000, true).projects, ["Mommy's World", 'paper-girl']);
+    const detected = detectAstra(dir, 1_000_000, true);
+    assert.deepEqual(detected.projects, ["Mommy's World", 'paper-girl']);
+    assert.deepEqual(detected.sessions, [
+      { project: "Mommy's World", model: 'gpt-6-astra', effort: 'ultra' },
+      { project: 'paper-girl', model: 'gpt-6-sol', effort: 'low' },
+      { project: 'paper-girl', model: 'gpt-6-luna', effort: 'medium' },
+    ]);
+    const cards = [0, 15000, 30000].map(now => {
+      const session = selectSession(detected, { shareProject: true }, now);
+      return activity(17, 'astra_galaxy', session.project, session.model, session.effort);
+    });
+    assert.deepEqual(cards.map(card => [card.state, card.details]), [
+      ["Working on Mommy's World", 'Using GPT-6 Astra on Ultra'],
+      ['Working on paper-girl', 'Using GPT-6 Sol on Low'],
+      ['Working on paper-girl', 'Using GPT-6 Luna on Medium'],
+    ]);
+    assert.deepEqual(selectSession(detected, { shareProject: true }, 45000), detected.sessions[0]);
+    assert.deepEqual(detectAstra(dir, 1_000_000, false).sessions, []);
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('private and fixed project labels use the newest model without leaking other projects', () => {
+  const detected = { project: 'private-project', model: 'gpt-6-astra', effort: 'ultra', sessions: [
+    { project: 'private-project', model: 'gpt-6-astra', effort: 'ultra' },
+    { project: 'another-project', model: 'gpt-6-sol', effort: 'low' },
+  ] };
+  assert.deepEqual(selectSession(detected, { shareProject: false, projectName: 'Hidden override' }, 15000),
+    { project: '', model: 'gpt-6-astra', effort: 'ultra' });
+  assert.deepEqual(selectSession(detected, { shareProject: true, projectName: '  Public\nlabel  ' }, 15000),
+    { project: 'Public label', model: 'gpt-6-astra', effort: 'ultra' });
+  assert.deepEqual(selectSession({ model: 'gpt-6-sol' }, { shareProject: true }, 15000),
+    { project: '', model: 'gpt-6-sol', effort: '' });
+});
+
+test('manual sessions keep their timer but use a generic label when model detection expires', () => {
+  const p = new Presence(); p.setMode('manual');
+  const startedAt = p.update(true, 10000);
+  assert.equal(activity(startedAt, 'astra_galaxy', '', 'gpt-6-sol', 'low').details, 'Using GPT-6 Sol on Low');
+  const expired = selectSession({ active: false }, { shareProject: true });
+  const card = activity(p.update(false, 400000), 'astra_galaxy', expired.project, expired.model, expired.effort);
+  assert.equal(card.details, 'Using OpenAI');
+  assert.equal(card.assets.large_text, 'OpenAI');
+  assert.equal(card.timestamps.start, startedAt);
 });
 test('card art defaults to the hosted galaxy and accepts asset keys or https links only', () => {
   assert.equal(validateConfig({ clientId: '123456789012345678' }).image, GALAXY_URL);

@@ -21,24 +21,86 @@ export function latestClaudeCode(home = process.env.CLAUDE_CONFIG_DIR || join(ho
   return latest;
 }
 
-// Exact model id of the latest reply (e.g. 'claude-opus-5-5'), its effort level (e.g. 'high') and the
-// session's working folder. Scans only the last 64 KB of the transcript and keeps only the "model",
-// "effort" and "cwd" values; conversation text is discarded, never stored or sent.
+const transcriptCache = new Map();
+const MAX_CACHED_TRANSCRIPTS = 64;
+const MAX_RECORD_BYTES = 8 * 1024 * 1024;
+const EFFORTS = new Set(['minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
+const emptyInfo = () => ({ model: '', effort: '', cwd: '' });
+const fileSignature = stat => `${stat.dev}:${stat.ino}:${stat.birthtimeMs}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
+
+// Read complete records backward, including records larger than one read buffer. Fragments are
+// joined only once per record, so large tool results cannot hide or corrupt earlier metadata.
+function* reverseRecords(fd, size) {
+  let position = size;
+  let pieces = [];
+  let recordBytes = 0;
+  const add = piece => {
+    recordBytes += piece.length;
+    if (recordBytes > MAX_RECORD_BYTES) throw new Error('Transcript record exceeds the metadata read limit.');
+    pieces.push(piece);
+  };
+  while (position > 0) {
+    const chunk = Buffer.alloc(Math.min(position, 64 * 1024));
+    position -= chunk.length;
+    if (readSync(fd, chunk, 0, chunk.length, position) !== chunk.length) throw new Error('Transcript changed while reading.');
+    let end = chunk.length;
+    for (let i = chunk.length - 1; i >= 0; i--) {
+      if (chunk[i] !== 10) continue;
+      if (end > i + 1) add(chunk.subarray(i + 1, end));
+      if (pieces.length) yield Buffer.concat(pieces.reverse()).toString('utf8');
+      pieces = [];
+      recordBytes = 0;
+      end = i;
+    }
+    if (end) add(chunk.subarray(0, end));
+  }
+  if (pieces.length) yield Buffer.concat(pieces.reverse()).toString('utf8');
+}
+
+// Only metadata is cached, never conversation text. File identity and modification metadata
+// invalidate the bounded cache on appends, truncation, replacement, or rewrites.
 export function transcriptInfo(file) {
   let fd;
   try {
     fd = openSync(file, 'r');
-    const size = fstatSync(fd).size;
-    const tail = Buffer.alloc(Math.min(size, 64 * 1024));
-    readSync(fd, tail, 0, tail.length, size - tail.length);
-    const text = tail.toString('utf8');
-    const ids = [...text.matchAll(/"model"\s*:\s*"(claude-[\w.\[\]-]{1,60})"/g)];
-    const efforts = [...text.matchAll(/"effort"\s*:\s*"([a-z-]{1,20})"/g)];
-    const dirs = [...text.matchAll(/"cwd"\s*:\s*"((?:[^"\\]|\\.){1,1024})"/g)];
-    let cwd = '';
-    try { cwd = dirs.length ? JSON.parse(`"${dirs.at(-1)[1]}"`) : ''; } catch { /* Malformed line. */ }
-    return { model: ids.at(-1)?.[1] ?? '', effort: efforts.at(-1)?.[1] ?? '', cwd };
-  } catch { return { model: '', effort: '', cwd: '' }; } finally { if (fd !== undefined) closeSync(fd); }
+    const stat = fstatSync(fd);
+    const signature = fileSignature(stat);
+    const cached = transcriptCache.get(file);
+    if (cached?.signature === signature) {
+      transcriptCache.delete(file);
+      transcriptCache.set(file, cached);
+      return { ...cached.info };
+    }
+    const info = emptyInfo();
+    let modelFound = false;
+    let cwdFound = false;
+    for (const line of reverseRecords(fd, stat.size)) {
+      let row;
+      try { row = JSON.parse(line); } catch { continue; } // Ignore incomplete writes and malformed records.
+      if (!row || typeof row !== 'object' || Array.isArray(row)) continue;
+      if (!cwdFound && typeof row.cwd === 'string') {
+        info.cwd = row.cwd.length <= 4096 ? row.cwd : '';
+        cwdFound = true;
+      }
+      if (!modelFound && row.type === 'assistant' && row.message && typeof row.message === 'object'
+        && row.message.model !== '<synthetic>') {
+        const model = row.message.model;
+        info.model = typeof model === 'string' && /^claude-[\w.\[\]-]{1,60}$/.test(model) ? model : '';
+        const effort = row.perTurnEffort ?? row.effort;
+        info.effort = info.model && EFFORTS.has(effort) ? effort : '';
+        modelFound = true;
+      }
+      if (modelFound && cwdFound) break;
+    }
+    if (fileSignature(fstatSync(fd)) !== signature) return emptyInfo();
+    transcriptCache.delete(file);
+    transcriptCache.set(file, { signature, info });
+    if (transcriptCache.size > MAX_CACHED_TRANSCRIPTS) transcriptCache.delete(transcriptCache.keys().next().value);
+    return { ...info };
+  } catch {
+    transcriptCache.delete(file);
+    return emptyInfo();
+  } finally { if (fd !== undefined) closeSync(fd); }
 }
 
 export function transcriptModel(file) {
@@ -93,11 +155,19 @@ export function claudeDesktopRunning() {
 
 export async function detectClaude({ now = Date.now(), home, desktop = claudeDesktopRunning } = {}) {
   try {
-    const latest = latestClaudeCode(home);
-    if (isRecent(latest.mtimeMs, now)) {
-      const { model, effort, cwd } = transcriptInfo(latest.file);
-      const projects = [...new Set(recentClaudeCode(home, now).map(f => sessionProject(transcriptInfo(f.file).cwd)).filter(Boolean))];
-      return { active: true, model, effort, project: sessionProject(cwd), projects, message: `Recent ${modelLabel(model) || 'Claude Code'} activity detected.` };
+    const recent = recentClaudeCode(home, now);
+    if (recent.length) {
+      const sessions = [];
+      const seen = new Set();
+      for (const { file } of recent) {
+        const { model, effort, cwd } = transcriptInfo(file);
+        const session = { project: sessionProject(cwd), model, effort };
+        const key = JSON.stringify(session);
+        if (!seen.has(key)) { seen.add(key); sessions.push(session); }
+      }
+      const { project, model, effort } = sessions[0];
+      const projects = [...new Set(sessions.map(session => session.project).filter(Boolean))];
+      return { active: true, model, effort, project, projects, sessions, message: `Recent ${modelLabel(model) || 'Claude Code'} activity detected.` };
     }
     // The desktop chat doesn't record its model, effort or folder locally, so this shows plain "Claude".
     if (await desktop()) return { active: true, model: '', effort: '', project: '', message: 'Claude desktop app is open (model not visible to this app).' };

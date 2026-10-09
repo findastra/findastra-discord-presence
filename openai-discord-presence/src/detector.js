@@ -52,15 +52,18 @@ export function detectAstra(home = process.env.CODEX_HOME || join(homedir(), '.c
     const model = active ? projectLabel(row.model) : '';
     const effort = active ? projectLabel(row.reasoning_effort ?? '') : '';
     const project = shareProject && active ? chatProject(home, row) : '';
-    // All recently active chats, newest first, each counted once.
-    let projects = [];
+    // Keep each chat's model and effort with its project when rotating the card.
+    let sessions = [];
     if (shareProject && active) {
-      const recent = db.prepare(`SELECT id, project_id, cwd FROM threads
+      const recent = db.prepare(`SELECT id, project_id, cwd, model, updated_at${hasEffort ? ', reasoning_effort' : ''} FROM threads
         WHERE archived = 0 AND source IN ('vscode', 'cli') AND (agent_path IS NULL OR agent_path = '/root')
         AND updated_at >= ? ORDER BY updated_at DESC LIMIT 25`).all(Math.floor((now - IDLE_MS) / 1000));
-      projects = [...new Set(recent.map(r => chatProject(home, r)).filter(Boolean))];
+      sessions = recent.filter(r => isRecentTask(r, now)).map(r => ({
+        project: chatProject(home, r), model: projectLabel(r.model), effort: projectLabel(r.reasoning_effort ?? ''),
+      }));
     }
-    return { active, model, effort, project, projects, message: active ? `Recent ${modelLabel(model)} activity detected in Codex.` : 'Waiting for recent activity in Codex.' };
+    const projects = [...new Set(sessions.map(session => session.project).filter(Boolean))];
+    return { active, model, effort, project, projects, sessions, message: active ? `Recent ${modelLabel(model)} activity detected in Codex.` : 'Waiting for recent activity in Codex.' };
   } catch {
     return { active: false, message: 'Automatic detection unavailable. Manual mode still works.' };
   } finally { db?.close(); }

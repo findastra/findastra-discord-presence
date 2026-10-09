@@ -72,7 +72,7 @@ for (const mode of ['manual', 'off', 'auto']) {
     if (mode !== 'off' && !state?.config.clientId) {
       $('setup').open = true;
       $('clientId').focus();
-      $('status').textContent = 'Finish the one-time Discord setup below, then start your session.';
+      $('status').textContent = 'Save a valid application ID in Settings, then start your session.';
       return;
     }
     $(mode).disabled = true;
@@ -87,7 +87,7 @@ $('settings').addEventListener('submit', async event => {
     await request('/api/config', { clientId: $('clientId').value, image: $('image').value,
       shareProject: $('share-project').checked, projectName: $('project-name').value,
       automaticOnStart: state.config.automaticOnStart });
-    $('save-status').textContent = 'Saved. Choose Start session or Automatically detect Codex.';
+    $('save-status').textContent = 'Saved. Choose Start session or Automatic.';
     await refresh();
   } catch (error) { $('save-status').textContent = error.message; }
 });

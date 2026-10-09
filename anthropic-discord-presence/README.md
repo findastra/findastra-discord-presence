@@ -1,54 +1,55 @@
 # Anthropic Discord Presence
 
-Shows the exact Anthropic model you're using in Claude Code on your Discord profile, with your project, an elapsed timer and a swirling galaxy.
+A free Windows companion for sharing Claude activity on Discord, with locally detected model information, an elapsed timer and an animated galaxy.
 
-![Swirling five-arm galaxy](public/galaxy-card.gif)
-
-**[⬇ Download for Windows](https://github.com/findastra/findastra-discord-presence/raw/main/downloads/anthropic-discord-presence.zip)** · Part of [Findastra Discord Presence](../README.md)
+**[Download for Windows](https://github.com/findastra/findastra-discord-presence/raw/main/downloads/anthropic-discord-presence.zip)**
 
 ## Start it
 
-1. Install [Node.js 24 or later](https://nodejs.org/en/download) if you don't have it.
-2. Unzip the download anywhere you like.
-3. Double-click **Start Anthropic Discord Presence.cmd**. Your browser opens the controls.
-4. Click **Automatic**. Keep Discord desktop open, with activity sharing on in Discord's settings.
-5. Optional: double-click **Enable Automatic Startup.cmd** once so it starts with Windows.
+1. Install [Node.js 24 or later](https://nodejs.org/en/download) if needed. No npm install is required.
+2. Extract the download and double-click **Start Anthropic Discord Presence.cmd**.
+3. Keep Discord desktop open with activity sharing enabled, then click **Automatic**.
+4. Optional: turn on **Run on Windows startup**, or double-click **Enable Automatic Startup.cmd**. Keep the extracted folder in place.
 
-No Discord setup is needed: the app comes with its own Discord application built in.
+The Discord application ID and hosted image are included. No API key, bot token, account connection or art upload is needed. Settings and custom applications are optional.
 
-## What your card shows
+## What Discord shows
 
-- **Title:** Anthropic
-- **Line 1:** the exact model and effort level, for example *Using Claude Opus 5.5 on High*. Hovering the galaxy shows the raw id (`claude-opus-5-5`). The Claude desktop chat doesn't save its model on your computer, so it shows plain *Using Claude*.
-- **Line 2:** *Working on [project]* if you turn on **Show my project on Discord**, otherwise *Exploring ideas*. The project is the folder your newest Claude Code session works in (never the chat title or a full path). Sessions with no folder, or whose folder was moved or deleted, show *Exploring ideas*. When several projects are active, the card shows each for 15 seconds in turn.
-- **Timer:** how long you've been working this session. Switching models keeps it running.
+The profile card contains the detected model and effort when available, an optional project name, and a session timer. Discord can use the registered application name in other surfaces, such as voice-channel activity labels.
 
-## Modes
+Both companions can run together, but Discord may display only one activity at a time. A successful local RPC acknowledgement means Discord accepted the update; it does not prove every card is visible. Check the full profile and Discord’s activity privacy settings.
 
-- **Automatic:** shares while the Claude desktop app is open, or while Claude Code wrote to a session in the last 5 minutes.
-- **Start session (manual):** shares until you click Stop sharing or Quit app.
-- **Off:** disconnects immediately.
+Automatic shares recent Claude Code activity or an open Claude desktop app. Claude Code model and effort labels come from parsed session metadata, using the latest non-synthetic assistant model. The desktop fallback says **Using Claude** because its exact model is unavailable. An open app is not proof that a model is generating.
 
-Closing the browser tab leaves the app running; **Quit app** stops it. To stop it starting with Windows, untick **Run on Windows startup** in the controls, or run `node scripts/startup.js --remove`.
+**Start session** stays active until **Stop sharing** or **Quit app**. The timer measures this companion’s continuous active session, not model computation time. Closing the browser tab leaves the companion running.
+
+## Project sharing
+
+Project sharing is off by default. Turn on **Show my project on Discord** to publish a folder name, or enter a fixed project label. Full paths and chat titles are never published. When several recent sessions rotate, each project keeps its own model and effort. With a fixed label or sharing disabled, the newest session supplies the model and effort. Sessions without a usable project show **Exploring ideas**.
+
+## Updating and startup
+
+Before starting an updated or relocated copy, choose **Quit app** in the old control panel. The launcher checks the running installation and source build; it reports a conflict instead of silently opening an older copy. If the folder moved, enable startup from the new copy again.
+
+To disable startup, clear **Run on Windows startup** or run `node scripts/startup.js --remove`. This also disables Automatic on the next launch. The startup installer creates default settings for a fresh download and validates configuration before replacing an existing launcher.
+
+## Optional custom application
+
+Create an application in the [Discord Developer Portal](https://discord.com/developers/applications), then replace the Application ID in Settings. The image field accepts an uploaded asset key or a public HTTPS image URL. Uploaded assets are static; external URLs support animated images. The default uses a hosted GIF.
 
 ## Privacy
 
-- Runs only on your computer (`127.0.0.1`), checks every request comes from its own page, and sends no telemetry.
-- To find the model, effort level and project, it reads only the last 64 KB of the newest Claude Code session file and keeps only the `model`, `effort` and `cwd` values (and of the folder, only its last name). Everything else, including your conversation, is discarded and never stored or sent.
-- Discord receives only: the model name and effort level, the start time, the art link and, if you opt in, your project's folder name.
-- Settings live in `.local/config.json`, which never leaves your computer.
+The detector scans complete Claude Code JSONL records backwards to extract model, effort and working-directory fields, including when an individual record exceeds 64 KB. Conversation text is discarded and never published or retained in the metadata cache.
 
-## Using your own Discord application (optional)
-
-Create an application with any name in the [Discord Developer Portal](https://discord.com/developers/applications) (Discord blocks some brand names, which doesn't matter: the card title is set by the app). Paste its Application ID under **Connect to Discord** in the controls. No art upload is needed.
+The control server binds only to `127.0.0.1`, checks Host and Origin for changes, and sends no telemetry. Discord receives activity text, a timestamp, an image URL and an optional project label. Settings remain in the Git-ignored `.local/config.json`. The local status endpoint includes installation/build identity so the launcher can detect old running copies; that identity is not sent to Discord.
 
 ## Development
 
 ```sh
-node --test          # 13 tests
-node src/server.js   # controls at http://127.0.0.1:38762/
+node --test
+node src/server.js
 ```
 
-`ANTHROPIC_PRESENCE_PORT` changes the port when running the server directly. No dependencies.
+The controls use `http://127.0.0.1:38762/`. `ANTHROPIC_PRESENCE_PORT` changes the port only when running the server directly. `node scripts/package.mjs` at the repository root rebuilds both Windows ZIPs. The local control panel requires the companion server.
 
-This independent app is not made, endorsed or sponsored by Anthropic or Discord. "Anthropic", "Claude" and model names are Anthropic's trademarks and appear only to say which product you're using. The galaxy art is original.
+The galaxy artwork is original. This independent project is not affiliated with Anthropic or Discord. Product and model names identify the software being used.

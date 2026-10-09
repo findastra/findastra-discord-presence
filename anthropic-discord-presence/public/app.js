@@ -50,7 +50,7 @@ async function refresh() {
     $('auto').setAttribute('aria-pressed', String(state.mode === 'auto'));
     $('manual').textContent = state.mode === 'manual' ? 'Session started' : 'Start session';
     $('mode-note').textContent = state.mode === 'auto'
-      ? 'Automatic shows while the Claude app is open or Claude Code was used in the last 5 minutes. Claude Code sessions name the exact model.'
+      ? 'Automatic shares recent Claude Code activity or an open Claude desktop app. Exact model names require current local metadata.'
       : 'Manual sessions stay on until you stop them or quit this app.';
     drawTimer();
   } catch {
@@ -72,7 +72,7 @@ for (const mode of ['manual', 'off', 'auto']) {
     if (mode !== 'off' && !state?.config.clientId) {
       $('setup').open = true;
       $('clientId').focus();
-      $('status').textContent = 'Finish the one-time Discord setup below, then start your session.';
+      $('status').textContent = 'Save a valid application ID in Settings, then start your session.';
       return;
     }
     $(mode).disabled = true;

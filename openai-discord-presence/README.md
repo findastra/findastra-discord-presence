@@ -1,54 +1,55 @@
 # OpenAI Discord Presence
 
-Shows the exact OpenAI model you're using in Codex on your Discord profile, with your project, an elapsed timer and a swirling galaxy.
+A free Windows companion for sharing Codex activity on Discord, with locally detected model information, an elapsed timer and an animated galaxy.
 
-![Swirling six-arm galaxy](public/galaxy-card.gif)
-
-**[⬇ Download for Windows](https://github.com/findastra/findastra-discord-presence/raw/main/downloads/openai-discord-presence.zip)** · Part of [Findastra Discord Presence](../README.md)
+**[Download for Windows](https://github.com/findastra/findastra-discord-presence/raw/main/downloads/openai-discord-presence.zip)**
 
 ## Start it
 
-1. Install [Node.js 24 or later](https://nodejs.org/en/download) if you don't have it.
-2. Unzip the download anywhere you like.
-3. Double-click **Start OpenAI Discord Presence.cmd**. Your browser opens the controls.
-4. Click **Automatic**. Keep Discord desktop open, with activity sharing on in Discord's settings.
-5. Optional: double-click **Enable Automatic Startup.cmd** once so it starts with Windows.
+1. Install [Node.js 24 or later](https://nodejs.org/en/download) if needed. No npm install is required.
+2. Extract the download and double-click **Start OpenAI Discord Presence.cmd**.
+3. Keep Discord desktop open with activity sharing enabled, then click **Automatic**.
+4. Optional: turn on **Run on Windows startup**, or double-click **Enable Automatic Startup.cmd**. Keep the extracted folder in place.
 
-No Discord setup is needed: the app comes with its own Discord application built in.
+The Discord application ID and hosted image are included. No API key, bot token, account connection or art upload is needed. Settings and custom applications are optional.
 
-## What your card shows
+## What Discord shows
 
-- **Title:** OpenAI
-- **Line 1:** the exact model and effort level, for example *Using GPT-6 Astra on Ultra* or *Using GPT-5.6 Sol on Low*. Hovering the galaxy shows the raw id (`gpt-6-astra`).
-- **Line 2:** *Working on [project]* if you turn on **Show my project on Discord**, otherwise *Exploring ideas*. The project is the folder your newest Codex chat works in (never the chat title or a full path). Chats without a real folder, or whose folder was renamed or deleted, use the chat's saved Codex project name instead. When several projects are active, the card shows each for 15 seconds in turn.
-- **Timer:** how long you've been working this session. Switching models keeps it running.
+The profile card contains the detected model and effort when available, an optional project name, and a session timer. Discord can use the registered application name in other surfaces, such as voice-channel activity labels.
 
-## Modes
+Both companions can run together, but Discord may display only one activity at a time. A successful local RPC acknowledgement means Discord accepted the update; it does not prove every card is visible. Check the full profile and Discord’s activity privacy settings.
 
-- **Automatic:** shares while your newest Codex chat was updated in the last 5 minutes, then hides. It reads Codex's local task list, not your screen, so long silent thinking can exceed the window.
-- **Start session (manual):** shares until you click Stop sharing or Quit app.
-- **Off:** disconnects immediately.
+Automatic reads recent primary Codex task metadata, excluding archived tasks and subagents. It hides after five minutes without a recent update. Background metadata updates can extend that window; long silent reasoning can exceed it. It does not track window focus. Unavailable or stale model metadata is labeled **Using OpenAI**, rather than guessed.
 
-Closing the browser tab leaves the app running; **Quit app** stops it. To stop it starting with Windows, untick **Run on Windows startup** in the controls, or run `node scripts/startup.js --remove`.
+**Start session** stays active until **Stop sharing** or **Quit app**. The timer measures this companion’s continuous active session, not model computation time. Closing the browser tab leaves the companion running.
+
+## Project sharing
+
+Project sharing is off by default. Turn on **Show my project on Discord** to publish a folder name, or enter a fixed project label. Full paths and chat titles are never published. When several recent sessions rotate, each project keeps its own model and effort. With a fixed label or sharing disabled, the newest session supplies the model and effort. Sessions without a usable project show **Exploring ideas**.
+
+## Updating and startup
+
+Before starting an updated or relocated copy, choose **Quit app** in the old control panel. The launcher checks the running installation and source build; it reports a conflict instead of silently opening an older copy. If the folder moved, enable startup from the new copy again.
+
+To disable startup, clear **Run on Windows startup** or run `node scripts/startup.js --remove`. This also disables Automatic on the next launch. The startup installer creates default settings for a fresh download and validates configuration before replacing an existing launcher.
+
+## Optional custom application
+
+Create an application in the [Discord Developer Portal](https://discord.com/developers/applications), then replace the Application ID in Settings. The image field accepts an uploaded asset key or a public HTTPS image URL. Uploaded assets are static; external URLs support animated images. The default uses a hosted GIF.
 
 ## Privacy
 
-- Runs only on your computer (`127.0.0.1`), checks every request comes from its own page, and sends no telemetry.
-- Automatic mode opens Codex's newest `~/.codex/state_N.sqlite` **read-only** and reads only each task's model, effort level, update time and folder. It never reads prompts, chat titles or transcripts.
-- Discord receives only: the model name and effort level, the start time, the art link and, if you opt in, your project's folder name.
-- Settings live in `.local/config.json`, which never leaves your computer.
+The detector opens Codex’s local SQLite task database read-only and reads model, effort, update time and folder metadata. It never reads prompts, replies or chat titles. Saved project names may be used when a real folder is unavailable.
 
-## Using your own Discord application (optional)
-
-Create an application with any name in the [Discord Developer Portal](https://discord.com/developers/applications) (Discord blocks some brand names, which doesn't matter: the card title is set by the app). Paste its Application ID under **Connect to Discord** in the controls. No art upload is needed.
+The control server binds only to `127.0.0.1`, checks Host and Origin for changes, and sends no telemetry. Discord receives activity text, a timestamp, an image URL and an optional project label. Settings remain in the Git-ignored `.local/config.json`. The local status endpoint includes installation/build identity so the launcher can detect old running copies; that identity is not sent to Discord.
 
 ## Development
 
 ```sh
-node --test          # 14 tests
-node src/server.js   # controls at http://127.0.0.1:38761/
+node --test
+node src/server.js
 ```
 
-`OPENAI_PRESENCE_PORT` changes the port when running the server directly. No dependencies. History is in [DEVELOPMENT.md](DEVELOPMENT.md).
+The controls use `http://127.0.0.1:38761/`. `OPENAI_PRESENCE_PORT` changes the port only when running the server directly. `node scripts/package.mjs` at the repository root rebuilds both Windows ZIPs. The local control panel requires the companion server.
 
-This independent app is not made, endorsed or sponsored by OpenAI or Discord. "OpenAI", "Codex" and model names are OpenAI's trademarks and appear only to say which product you're using. The galaxy art is original.
+The galaxy artwork is original. This independent project is not affiliated with OpenAI or Discord. Product and model names identify the software being used.

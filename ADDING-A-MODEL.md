@@ -17,19 +17,20 @@ Rename the start file to `Start Google Discord Presence.cmd` and replace every "
 1. Create an application in the [Discord Developer Portal](https://discord.com/developers/applications). Any name works; Discord blocks some brand names, and that doesn't matter because the app sets the card title itself.
 2. Copy its **Application ID** (public, not a secret) into `BUILT_IN_CLIENT_ID` in `src/presence.js`.
 
-Each AI needs its own application: Discord shows one card per application.
+Each AI needs its own application identity. Separate identities and successful activity acknowledgements do not guarantee simultaneous cards: verify the actual profile in the target Discord client.
 
 ## 3. Teach it to recognise the AI (`src/detector.js`)
 
 Write a `detect…()` function that returns:
 
 ```js
-{ active, model, effort, project, projects, message }
+{ active, model, effort, project, projects, sessions, message }
 ```
 
 - `active`: true if the AI was used in the last 5 minutes (`IDLE_MS`).
 - `model`: the exact model id, e.g. `gemini-3-pro`. `effort`: its thinking level if the AI records one, else `''`.
 - `project` / `projects`: the folder name(s) of recent sessions, only when the user turned on project sharing. Use the existing `folderProject()` rules: last folder name only, never a full path, and never a folder that no longer exists.
+- `sessions`: newest-first records of `{ project, model, effort }`. Keep these fields together when rotating the card, and use the same selected record for the local preview and Discord payload. Never infer one session's model from another session.
 - `message`: a short status for the controls page.
 
 Read **metadata only**: timestamps, model ids, folder paths. Never read prompts, replies or chat titles, and never send anything except the card to Discord.

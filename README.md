@@ -1,8 +1,8 @@
 # Findastra Discord Presence
 
-Show your friends which AI model you're using, live on your Discord profile: the exact model and effort level, the project you're working on, an elapsed timer, and a swirling galaxy that moves like a real one.
+Share AI activity on your Discord profile: the model and effort level when local metadata exposes them, an optional project name, an elapsed timer, and a swirling galaxy.
 
-Two small Windows apps, one for each company's models. Run one or both; both cards can show at once.
+Two small Windows apps, one for each company's models. Both can run together, but Discord may display only one card even when it accepts both activities. Each card was verified individually on Discord desktop; simultaneous display is not guaranteed.
 
 | | |
 |:---:|:---:|
@@ -19,6 +19,8 @@ Two small Windows apps, one for each company's models. Run one or both; both car
 4. Click **Automatic**. Keep Discord desktop open, with activity sharing on in Discord's settings.
 5. Optional: double-click **Enable Automatic Startup.cmd** once so it starts with Windows.
 
+When updating, quit the running companion from its control panel before opening the new copy. The launcher checks the installation and build so an older process cannot silently stand in for the update. If you move the folder, enable startup again from the new location.
+
 No account, API key or Discord setup needed. Everything runs on your own computer; nothing is sent anywhere except the card itself to your own Discord app. Details: [OpenAI app](openai-discord-presence/README.md) · [Anthropic app](anthropic-discord-presence/README.md).
 
 ## What the card shows
@@ -28,7 +30,9 @@ No account, API key or Discord setup needed. Everything runs on your own compute
 > Working on paper-girl
 > 00:42 elapsed
 
-The title is the company; the line under it is the exact model and effort level. Your project (the folder you're working in) is opt-in. With several projects active, the card rotates through them every 15 seconds.
+The title is the company; the line under it is the detected model and effort level when available. Your project (the folder you're working in) is opt-in. With several projects active, the card rotates through complete session records every 15 seconds, keeping each project paired with its own model and effort.
+
+Codex and Claude Code expose model metadata. Claude desktop chat does not expose an exact model to this companion, so it shows **Using Claude**. OpenAI manual sessions with no recent model metadata show **Using OpenAI**. Automatic detection follows recent metadata or an open Claude desktop app, not foreground focus. An accepted Discord activity is not proof that the profile displays it.
 
 ## The galaxies
 

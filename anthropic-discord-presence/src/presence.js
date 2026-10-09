@@ -20,6 +20,20 @@ export function projectLabel(value) {
   return String(value ?? '').replace(/[\x00-\x1f\x7f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 110);
 }
 
+// Keep model and effort attached to their own session while projects rotate. A private or fixed
+// project label uses the newest session; neither setting exposes another session's folder.
+export function selectSession(detection = {}, config = {}, now = Date.now()) {
+  const sessions = detection.sessions?.length ? detection.sessions : [detection];
+  const override = projectLabel(config.projectName);
+  const rotate = config.shareProject === true && !override;
+  const selected = sessions[rotate ? Math.floor(now / 15000) % sessions.length : 0];
+  return {
+    project: config.shareProject === true ? override || projectLabel(selected.project) : '',
+    model: selected.model || '',
+    effort: selected.effort || '',
+  };
+}
+
 const cap = word => word.charAt(0).toUpperCase() + word.slice(1);
 
 // Friendly name for an exact model id: 'claude-opus-5-5' → 'Claude Opus 5.5', 'claude-haiku-4-5-20251001' → 'Claude Haiku 4.5'.

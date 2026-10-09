@@ -24,7 +24,7 @@ test('user-facing text follows the naming rules', () => {
     lines.forEach((line, i) => {
       // Allowed on purpose: CLAUDE.md quoting a rule, and the list of old launcher files to delete.
       if (file === 'CLAUDE.md' && line.includes('pairs the companies')) return;
-      if (line.includes('for (const legacy of')) return;
+      if (line.includes('for (const legacy of') || line.includes('const legacyNames =')) return;
       for (const [pattern, why] of forbidden) if (pattern.test(line)) problems.push(`${file}:${i + 1}: ${why}\n    ${line.trim().slice(0, 120)}`);
     });
   }

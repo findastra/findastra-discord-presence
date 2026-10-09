@@ -27,6 +27,20 @@ export function projectLabel(value) {
   return String(value ?? '').replace(/[\x00-\x1f\x7f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 110);
 }
 
+const ROTATE_MS = 15000;
+
+// Select the entire chat record, so a rotating project always keeps its own model.
+// A fixed label or disabled project sharing continues to describe the newest chat.
+export function selectSession(detection = {}, config = {}, now = Date.now()) {
+  const latest = { model: projectLabel(detection.model), effort: projectLabel(detection.effort) };
+  if (!config.shareProject) return { project: '', ...latest };
+  const override = projectLabel(config.projectName);
+  if (override) return { project: override, ...latest };
+  const sessions = detection.sessions?.length ? detection.sessions : [detection];
+  const session = sessions[Math.floor(now / ROTATE_MS) % sessions.length];
+  return { project: projectLabel(session.project), model: projectLabel(session.model), effort: projectLabel(session.effort) };
+}
+
 const cap = word => word.charAt(0).toUpperCase() + word.slice(1);
 
 // Friendly name for an exact model id: 'gpt-6-astra' → 'GPT-6 Astra', 'gpt-5.6-sol' → 'GPT-5.6 Sol'.
@@ -56,7 +70,7 @@ export const GALAXY_URL = 'https://raw.githubusercontent.com/findastra/findastra
 
 export function activity(startedAt, image = GALAXY_URL, project = '', model = '', effort = '') {
   if (startedAt === null) return null;
-  const name = modelLabel(model) || 'GPT-6 Astra';
+  const name = modelLabel(model) || 'OpenAI';
   // The effort level only means something next to a known model.
   const level = modelLabel(model) ? effortLabel(effort) : '';
   return {

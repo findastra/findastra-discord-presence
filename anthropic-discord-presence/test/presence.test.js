@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync, utimesSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, appendFileSync, renameSync, statSync, mkdirSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { GALAXY_URL, Presence, activity, validateConfig, modelLabel, effortLabel } from '../src/presence.js';
-import { detectClaude, isRecent, transcriptModel, folderProject } from '../src/detector.js';
+import { GALAXY_URL, Presence, activity, validateConfig, modelLabel, effortLabel, selectSession } from '../src/presence.js';
+import { detectClaude, isRecent, transcriptModel, transcriptInfo, folderProject } from '../src/detector.js';
 import { frame, Decoder, DiscordRPC } from '../src/rpc.js';
 import net from 'node:net';
 import { randomUUID } from 'node:crypto';
@@ -54,25 +54,25 @@ test('detector reads Claude Code transcript times and falls back to the desktop 
     const never = async () => false;
     assert.equal((await detectClaude({ home: dir, desktop: never })).active, false);
     mkdirSync(join(dir, 'projects', 'p1'), { recursive: true });
-    const file = join(dir, 'projects', 'p1', 's.jsonl'); writeFileSync(file, '{}');
+    const file = join(dir, 'projects', 'p1', 'session-20261008.jsonl'); writeFileSync(file, '{}');
     assert.equal((await detectClaude({ home: dir, desktop: never })).active, true);
     const old = new Date(Date.now() - 10 * 60 * 1000); utimesSync(file, old, old);
     assert.equal((await detectClaude({ home: dir, desktop: never })).active, false);
     assert.equal((await detectClaude({ home: dir, desktop: async () => true })).active, true);
     assert.equal((await detectClaude({ home: dir, desktop: async () => { throw new Error('x'); } })).active, false);
-    writeFileSync(file, '{"message":{"model":"claude-sonnet-5-5","content":"secret"}}\n{"message":{"model":"<synthetic>"}}\n{"message":{"model":"claude-opus-5-5"}}\n');
+    writeFileSync(file, '{"type":"assistant","message":{"model":"claude-sonnet-5-5","content":"secret"}}\n{"type":"assistant","message":{"model":"<synthetic>"}}\n{"type":"assistant","message":{"model":"claude-opus-5-5"}}\n');
     const found = await detectClaude({ home: dir, desktop: never });
     assert.equal(found.model, 'claude-opus-5-5');
-    assert.equal(transcriptModel(join(dir, 'missing.jsonl')), '');
+    assert.equal(transcriptModel(join(dir, 'missing-20261008.jsonl')), '');
     const folder = join(dir, 'paper-girl'); mkdirSync(folder);
-    writeFileSync(file, JSON.stringify({ cwd: folder, message: { model: 'claude-opus-5-5' } }) + '\n');
+    writeFileSync(file, JSON.stringify({ type: 'assistant', cwd: folder, message: { model: 'claude-opus-5-5' } }) + '\n');
     assert.equal((await detectClaude({ home: dir, desktop: never })).project, 'paper-girl');
     // A folder that was moved or deleted must not show its old name.
-    writeFileSync(file, JSON.stringify({ cwd: join(dir, 'claude-discord-presence'), message: { model: 'claude-opus-5-5' } }) + '\n');
+    writeFileSync(file, JSON.stringify({ type: 'assistant', cwd: join(dir, 'claude-discord-presence'), message: { model: 'claude-opus-5-5' } }) + '\n');
     assert.equal((await detectClaude({ home: dir, desktop: never })).project, '');
-    writeFileSync(file, JSON.stringify({ cwd: folder, message: { model: 'claude-opus-5-5' } }) + '\n');
+    writeFileSync(file, JSON.stringify({ type: 'assistant', cwd: folder, message: { model: 'claude-opus-5-5' } }) + '\n');
     assert.equal((await detectClaude({ home: dir, desktop: never })).effort, '');
-    writeFileSync(file, '{"effort":"medium","message":{"model":"claude-opus-5-5"}}\n{"effort":"high","perTurnEffort":"high","message":{"model":"claude-opus-5-5"}}\n');
+    writeFileSync(file, '{"type":"assistant","effort":"medium","message":{"model":"claude-opus-5-5"}}\n{"type":"assistant","effort":"high","perTurnEffort":"high","message":{"model":"claude-opus-5-5"}}\n');
     assert.equal((await detectClaude({ home: dir, desktop: never })).effort, 'high');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
@@ -137,14 +137,103 @@ test('every recently active Claude Code folder is listed for rotation, newest fi
   const dir = mkdtempSync(join(tmpdir(), 'claude-rotate-'));
   try {
     mkdirSync(join(dir, 'projects', 'a'), { recursive: true }); mkdirSync(join(dir, 'projects', 'b'), { recursive: true });
-    const older = join(dir, 'projects', 'a', 'x.jsonl'), newer = join(dir, 'projects', 'b', 'y.jsonl');
+    const older = join(dir, 'projects', 'a', 'older-20261008.jsonl'), newer = join(dir, 'projects', 'b', 'newer-20261008.jsonl');
     mkdirSync(join(dir, 'paper-girl')); mkdirSync(join(dir, 'fuzzbois'));
-    writeFileSync(older, JSON.stringify({ cwd: join(dir, 'paper-girl'), message: { model: 'claude-opus-5-5' } }) + '\n');
-    writeFileSync(newer, JSON.stringify({ cwd: join(dir, 'fuzzbois'), message: { model: 'claude-opus-5-5' } }) + '\n');
+    writeFileSync(older, JSON.stringify({ type: 'assistant', cwd: join(dir, 'paper-girl'), effort: 'low', message: { model: 'claude-haiku-4-5' } }) + '\n');
+    writeFileSync(newer, JSON.stringify({ type: 'assistant', cwd: join(dir, 'fuzzbois'), effort: 'high', message: { model: 'claude-opus-5-5' } }) + '\n');
     const minuteAgo = new Date(Date.now() - 60_000); utimesSync(older, minuteAgo, minuteAgo);
     const found = await detectClaude({ home: dir, desktop: async () => false });
     assert.deepEqual(found.projects, ['fuzzbois', 'paper-girl']);
+    assert.deepEqual(found.sessions, [
+      { project: 'fuzzbois', model: 'claude-opus-5-5', effort: 'high' },
+      { project: 'paper-girl', model: 'claude-haiku-4-5', effort: 'low' },
+    ]);
+    const selected = selectSession(found, { shareProject: true }, 15000);
+    const card = activity(17, undefined, selected.project, selected.model, selected.effort);
+    assert.equal(card.details, 'Using Claude Haiku 4.5 on Low');
+    assert.equal(card.state, 'Working on paper-girl');
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('complete transcript records preserve model across large replies and tool results without trusting nested fields', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'claude-records-'));
+  const file = join(dir, 'large-session-20261008.jsonl');
+  try {
+    const reply = { type: 'assistant', cwd: dir, effort: 'high', message: { model: 'claude-opus-5-5', content: [
+      { type: 'text', text: 'large reply '.repeat(20000) },
+      { type: 'tool_use', input: { cwd: 'C:/wrong-project', model: 'claude-haiku-4-5', effort: 'low' } },
+    ] } };
+    writeFileSync(file, JSON.stringify(reply) + '\n');
+    const expected = { model: 'claude-opus-5-5', effort: 'high', cwd: dir };
+    assert.deepEqual(transcriptInfo(file), expected);
+    appendFileSync(file, JSON.stringify({ type: 'user', cwd: dir, message: { model: 'claude-haiku-4-5', content: [
+      { type: 'tool_result', content: 'large result '.repeat(150000), model: 'claude-haiku-4-5', effort: 'low', cwd: 'C:/wrong-project' },
+    ] } }) + '\n');
+    assert.deepEqual(transcriptInfo(file), expected);
+    appendFileSync(file, '{"type":"assistant","message":{"model":"claude-haiku-4-5"');
+    assert.deepEqual(transcriptInfo(file), expected);
+    appendFileSync(file, '},"cwd":"","effort":"low","perTurnEffort":"high"}\n');
+    assert.deepEqual(transcriptInfo(file), { model: 'claude-haiku-4-5', effort: 'high', cwd: '' });
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('transcript metadata cache invalidates on truncation and file replacement', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'claude-cache-'));
+  const file = join(dir, 'session-20261008.jsonl');
+  const replacement = join(dir, 'replacement-20261008.jsonl');
+  try {
+    const record = model => JSON.stringify({ type: 'assistant', cwd: dir, effort: 'high', message: { model } }) + '\n';
+    writeFileSync(file, record('claude-opus-5-5'));
+    const first = transcriptInfo(file);
+    first.model = 'caller mutation';
+    assert.equal(transcriptInfo(file).model, 'claude-opus-5-5');
+    const before = statSync(file);
+    writeFileSync(replacement, record('claude-opus-4-1'));
+    utimesSync(replacement, before.atime, before.mtime);
+    renameSync(replacement, file);
+    assert.equal(transcriptInfo(file).model, 'claude-opus-4-1');
+    writeFileSync(file, '{"type":"user","cwd":""}\n');
+    assert.deepEqual(transcriptInfo(file), { model: '', effort: '', cwd: '' });
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('an oversized transcript record fails safely until newer complete metadata is available', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'claude-bounded-'));
+  const file = join(dir, 'session-20261008.jsonl');
+  try {
+    const reply = JSON.stringify({ type: 'assistant', cwd: dir, effort: 'high', message: { model: 'claude-opus-5-5' } }) + '\n';
+    writeFileSync(file, reply);
+    appendFileSync(file, JSON.stringify({ type: 'user', cwd: dir, message: { content: 'x'.repeat(9 * 1024 * 1024) } }) + '\n');
+    assert.deepEqual(transcriptInfo(file), { model: '', effort: '', cwd: '' });
+    appendFileSync(file, reply);
+    assert.deepEqual(transcriptInfo(file), { model: 'claude-opus-5-5', effort: 'high', cwd: dir });
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('unknown assistant metadata stays generic and cannot reuse an earlier effort', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'claude-unknown-'));
+  const file = join(dir, 'session-20261008.jsonl');
+  try {
+    writeFileSync(file, JSON.stringify({ type: 'assistant', cwd: dir, effort: 'high', message: { model: 'claude-opus-5-5' } }) + '\n');
+    appendFileSync(file, JSON.stringify({ type: 'assistant', cwd: dir, effort: 'low', message: { model: '<synthetic>' } }) + '\n');
+    assert.equal(transcriptInfo(file).model, 'claude-opus-5-5');
+    appendFileSync(file, JSON.stringify({ type: 'assistant', cwd: dir, effort: 'high', message: { model: 'unrecognized-provider' } }) + '\n');
+    assert.deepEqual(transcriptInfo(file), { model: '', effort: '', cwd: dir });
+    appendFileSync(file, JSON.stringify({ type: 'assistant', cwd: dir, effort: 'made-up', message: { model: 'claude-haiku-4-5' } }) + '\n');
+    assert.deepEqual(transcriptInfo(file), { model: 'claude-haiku-4-5', effort: '', cwd: dir });
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('session selection respects project privacy, fixed labels, and the current session model', () => {
+  const sessions = [
+    { project: 'project-a', model: 'claude-opus-5-5', effort: 'high' },
+    { project: 'project-b', model: 'claude-haiku-4-5', effort: 'low' },
+  ];
+  assert.deepEqual(selectSession({ sessions }, { shareProject: true }, 0), sessions[0]);
+  assert.deepEqual(selectSession({ sessions }, { shareProject: true }, 15000), sessions[1]);
+  assert.deepEqual(selectSession({ sessions }, { shareProject: false, projectName: 'private' }, 15000), { ...sessions[0], project: '' });
+  assert.deepEqual(selectSession({ sessions }, { shareProject: true, projectName: 'Fixed project' }, 15000), { ...sessions[0], project: 'Fixed project' });
+  assert.deepEqual(selectSession({}, {}, 15000), { project: '', model: '', effort: '' });
 });
 test('card art defaults to the hosted galaxy and accepts asset keys or https links only', () => {
   assert.equal(validateConfig({ clientId: '123456789012345678' }).image, GALAXY_URL);
