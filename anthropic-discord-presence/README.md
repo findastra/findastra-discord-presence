@@ -8,7 +8,7 @@ A free Windows companion for sharing Claude activity on Discord, with locally de
 
 1. Install [Node.js 24 or later](https://nodejs.org/en/download) if needed. No npm install is required.
 2. Extract the download and double-click **Start Anthropic Discord Presence.cmd**.
-3. Keep Discord desktop open with activity sharing enabled, then click **Automatic**.
+3. Keep Discord desktop open with activity sharing enabled. Choose **Automatic** for Claude Code, or **Start session** for regular Claude desktop chat.
 4. Optional: turn on **Run on Windows startup**, or double-click **Enable Automatic Startup.cmd**. Keep the extracted folder in place.
 
 The Discord application ID and hosted image are included. No API key, bot token, account connection or art upload is needed. Settings and custom applications are optional.
@@ -19,7 +19,9 @@ The profile card contains the detected model and effort when available, an optio
 
 Both companions can run together, but Discord may display only one activity at a time. A successful local RPC acknowledgement means Discord accepted the update; it does not prove every card is visible. Check the full profile and Discord’s activity privacy settings.
 
-Automatic shares recent Claude Code activity or an open Claude desktop app. Claude Code model and effort labels come from parsed session metadata, using the latest non-synthetic assistant model. The desktop fallback says **Using Claude** because its exact model is unavailable. An open app is not proof that a model is generating.
+Automatic requires Claude Code conversation activity recorded within the last five minutes, including desktop Code sessions when supported local metadata is available. An open Claude app or a recently touched transcript file does not count. Model and effort labels come from parsed session metadata.
+
+Regular Claude desktop chat has no reliable automatic detector here. Use **Start session** when you begin and **Stop sharing** when you finish; unavailable model metadata is labeled **Using Claude**.
 
 **Start session** stays active until **Stop sharing** or **Quit app**. The timer measures this companion’s continuous active session, not model computation time. Closing the browser tab leaves the companion running.
 
@@ -39,7 +41,7 @@ Create an application in the [Discord Developer Portal](https://discord.com/deve
 
 ## Privacy
 
-The detector scans complete Claude Code JSONL records backwards to extract model, effort and working-directory fields, including when an individual record exceeds 64 KB. Conversation text is discarded and never published or retained in the metadata cache.
+The detector scans complete Claude Code JSONL records backwards to extract conversation timestamps, model, effort and working-directory fields, including when an individual record exceeds 64 KB. Conversation text is discarded and never published or retained in the metadata cache.
 
 The control server binds only to `127.0.0.1`, checks Host and Origin for changes, and sends no telemetry. Discord receives activity text, a timestamp, an image URL and an optional project label. Settings remain in the Git-ignored `.local/config.json`. The local status endpoint includes installation/build identity so the launcher can detect old running copies; that identity is not sent to Discord.
 
