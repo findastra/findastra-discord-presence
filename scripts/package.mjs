@@ -14,9 +14,9 @@ for (const [app, title] of apps) {
   const dir = join(root, app), name = app;
   const files = [
     [join(root, 'LICENSE'), 'LICENSE'],
-    ...['README.md', 'package.json', `Start ${title}.cmd`, 'Enable Automatic Startup.cmd', 'scripts/startup.js',
+    ...['README.md', 'package.json', `Start ${title}.cmd`, 'Enable Automatic Startup.cmd', 'scripts/startup.js', 'scripts/tray-20261009.ps1',
         ...readdirSync(join(dir, 'src')).filter(f => f.endsWith('.js')).map(f => `src/${f}`),
-        ...['index.html', 'style.css', 'app.js', 'galaxy.png', 'galaxy.gif'].map(f => `public/${f}`)].map(f => [join(dir, f), f]),
+        ...['index.html', 'style.css', 'app.js', 'galaxy.png', 'galaxy.gif', 'tray-icon-20261009.ico'].map(f => `public/${f}`)].map(f => [join(dir, f), f]),
   ];
   const entries = [], central = []; let offset = 0;
   for (const [path, file] of files) {

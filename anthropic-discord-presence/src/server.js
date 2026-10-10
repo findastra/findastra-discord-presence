@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
@@ -164,7 +165,20 @@ async function shutdown() {
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
+// Windows: show a system tray icon with Start, Automatic, Stop, Open and Quit.
+function startTray() {
+  if (process.platform !== 'win32' || process.env.ANTHROPIC_PRESENCE_NO_TRAY) return;
+  try {
+    const child = spawn('powershell.exe', ['-NoProfile', '-STA', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass',
+      '-File', join(root, 'scripts', 'tray-20261009.ps1'), '-Port', String(port), '-Name', 'Anthropic Discord Presence',
+      '-Icon', join(root, 'public', 'tray-icon-20261009.ico'), '-ServerPid', String(process.pid)],
+      { detached: true, windowsHide: true, stdio: 'ignore' });
+    child.on('error', () => { /* The control panel still works without a tray icon. */ });
+    child.unref();
+  } catch { /* The control panel still works without a tray icon. */ }
+}
 server.listen(port, '127.0.0.1', () => {
   console.log(`Anthropic Discord Presence: ${origin}\nClose with Quit app or Ctrl+C.`);
   void sync();
+  startTray();
 });

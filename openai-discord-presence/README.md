@@ -13,6 +13,10 @@ A free Windows companion for sharing Codex activity on Discord, with locally det
 
 The Discord application ID and hosted image are included. No API key, bot token, account connection or art upload is needed. Settings and custom applications are optional.
 
+## System tray
+
+On Windows the companion puts a galaxy icon in the system tray (by the clock; it may sit under the ^ arrow). Right-click it for **Start session**, **Automatic**, **Stop sharing**, **Open control panel** and **Quit app**, or double-click to open the control panel. The icon disappears when the app quits. It uses Windows PowerShell, which is built into Windows.
+
 ## What Discord shows
 
 The profile card contains the detected model and effort when available, an optional project name, and a session timer. Discord can use the registered application name in other surfaces, such as voice-channel activity labels.
