@@ -85,5 +85,17 @@ export function validateConfig(input) {
   if (!/^\d{17,20}$/.test(clientId)) throw new Error('Paste the 17–20 digit Discord Application ID. No token needed.');
   // Either an uploaded Discord asset key or an https image link.
   if (!/^[a-z0-9_-]{1,128}$/.test(image) && !/^https:\/\/[^\s"<>]{1,240}$/.test(image)) throw new Error('Use an uploaded asset key or an https image link.');
-  return { clientId, image, shareProject: input.shareProject === true, projectName: projectLabel(input.projectName), automaticOnStart: input.automaticOnStart === true };
+  return { clientId, image, shareProject: input.shareProject === true, projectName: projectLabel(input.projectName),
+    automaticOnStart: input.automaticOnStart === true, alwaysOn: input.alwaysOn === true };
+}
+
+// The mode a launch starts in. Always on shares straight away, because Claude on the web, desktop chat and
+// cloud sessions leave nothing on this computer to detect. Otherwise Windows startup starts in Automatic.
+export function launchMode(config = {}) {
+  return config.alwaysOn === true ? 'manual' : config.automaticOnStart === true ? 'auto' : 'off';
+}
+
+// Turning Always on starts sharing now. Turning it off keeps the current session until Stop sharing.
+export function modeAfterSettings(previous = {}, next = {}, mode = 'off') {
+  return next.alwaysOn === true && previous.alwaysOn !== true ? 'manual' : mode;
 }

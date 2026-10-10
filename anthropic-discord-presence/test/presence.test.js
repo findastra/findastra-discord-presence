@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync, appendFileSync, renameSync, statSync, mkdirSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { GALAXY_URL, Presence, activity, validateConfig, modelLabel, effortLabel, selectSession } from '../src/presence.js';
+import { GALAXY_URL, Presence, activity, validateConfig, modelLabel, effortLabel, selectSession, launchMode, modeAfterSettings } from '../src/presence.js';
 import { detectClaude, isRecent, transcriptModel, transcriptInfo, folderProject } from '../src/detector.js';
 import { frame, Decoder, DiscordRPC } from '../src/rpc.js';
 import net from 'node:net';
@@ -17,6 +17,32 @@ test('manual timer persists through updates and resets only after stop or mode c
   p.setMode('off'); assert.equal(p.update(true, 40000), null);
   p.setMode('manual'); assert.equal(p.update(false, 50000), 50);
   assert.throws(() => p.setMode('anything'));
+});
+test('Always on is opt-in and shares from launch without any detected activity', () => {
+  const id = '123456789012345678';
+  assert.equal(validateConfig({ clientId: id }).alwaysOn, false);
+  assert.equal(validateConfig({ clientId: id, alwaysOn: 'yes' }).alwaysOn, false);
+  assert.equal(launchMode(validateConfig({ clientId: id })), 'off');
+  assert.equal(launchMode(validateConfig({ clientId: id, automaticOnStart: true })), 'auto');
+  // Always on wins over Automatic: cloud and web sessions leave no local activity to wait for.
+  const config = validateConfig({ clientId: id, automaticOnStart: true, alwaysOn: true });
+  assert.equal(config.alwaysOn, true);
+  assert.equal(launchMode(config), 'manual');
+  const p = new Presence(); p.setMode(launchMode(config));
+  assert.equal(p.update(false, 10000), 10);
+  assert.equal(p.update(false, 10 * 60 * 60 * 1000), 10);
+  const card = activity(p.startedAt);
+  assert.equal(card.details, 'Using Claude');
+  assert.equal(card.timestamps.start, 10);
+  // Claude Code activity on this computer still names the exact model on the same card.
+  assert.equal(activity(p.startedAt, undefined, '', 'claude-opus-5-5', 'high').details, 'Using Claude Opus 5.5 on High');
+});
+test('turning Always on starts sharing now; turning it off keeps the current session', () => {
+  assert.equal(modeAfterSettings({ alwaysOn: false }, { alwaysOn: true }, 'off'), 'manual');
+  assert.equal(modeAfterSettings({ alwaysOn: false }, { alwaysOn: true }, 'auto'), 'manual');
+  assert.equal(modeAfterSettings({ alwaysOn: true }, { alwaysOn: true }, 'off'), 'off');
+  assert.equal(modeAfterSettings({ alwaysOn: true }, { alwaysOn: false }, 'manual'), 'manual');
+  assert.equal(modeAfterSettings({}, {}, 'auto'), 'auto');
 });
 test('automatic stops on idle and resumes with a fresh timer', () => {
   const p = new Presence(); p.setMode('auto');

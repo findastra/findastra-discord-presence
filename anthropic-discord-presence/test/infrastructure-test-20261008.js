@@ -131,3 +131,11 @@ test('launcher starts absent companion once and waits for matching identity', as
   assert.match(calls[0][1][0], /server\.js$/);
   assert.equal(SOURCE_IDENTITY.buildId.length, 64);
 });
+test('enabling or disabling Windows startup keeps the Always on choice', () => {
+  const m = memory();
+  m.files.set(m.configPath, JSON.stringify({ clientId: BUILT_IN_CLIENT_ID, image: GALAXY_URL, alwaysOn: true }));
+  assert.equal(setStartup(true, m.options).alwaysOn, true);
+  assert.equal(JSON.parse(m.files.get(m.configPath)).alwaysOn, true);
+  assert.equal(setStartup(false, m.options).alwaysOn, true);
+  assert.equal(JSON.parse(m.files.get(m.configPath)).alwaysOn, true);
+});

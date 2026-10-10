@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
-import { BUILT_IN_CLIENT_ID, GALAXY_URL, Presence, activity, validateConfig, modelLabel, effortLabel, selectSession } from './presence.js';
+import { BUILT_IN_CLIENT_ID, GALAXY_URL, Presence, activity, validateConfig, modelLabel, effortLabel, selectSession, launchMode, modeAfterSettings } from './presence.js';
 import { detectClaude } from './detector.js';
 import { DiscordRPC } from './rpc.js';
 import { startupEnabled, setStartup } from './windows-startup.js';
@@ -17,7 +17,7 @@ const origin = `http://127.0.0.1:${port}`;
 let config = { clientId: BUILT_IN_CLIENT_ID, image: GALAXY_URL };
 try { config = validateConfig(JSON.parse(readFileSync(configPath, 'utf8'))); } catch { /* Setup stays available. */ }
 const presence = new Presence();
-if (config.automaticOnStart) presence.setMode('auto');
+presence.setMode(launchMode(config));
 const rpc = new DiscordRPC();
 let detection = { active: false, model: '', message: 'Choose Automatic for recent Claude Code conversations, or Start session for regular Claude desktop chat.' };
 let currentSession = selectSession(detection, config);
@@ -118,6 +118,7 @@ const server = http.createServer(async (req, res) => {
         const nextConfig = validateConfig(input);
         mkdirSync(join(root, '.local'), { recursive: true });
         writeFileSync(configPath, JSON.stringify(nextConfig, null, 2) + '\n', { mode: 0o600 });
+        presence.setMode(modeAfterSettings(config, nextConfig, presence.mode));
         config = nextConfig;
         revision++;
         rpc.disconnect();

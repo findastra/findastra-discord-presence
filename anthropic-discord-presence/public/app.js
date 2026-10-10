@@ -39,6 +39,7 @@ async function refresh() {
       $('share-project').checked = state.config.shareProject;
       $('project-name').value = state.config.projectName || '';
       $('automatic-start').checked = state.startupEnabled;
+      $('always-on').checked = state.config.alwaysOn === true;
       $('setup').open = !state.config.clientId;
       initialized = true;
     }
@@ -51,7 +52,9 @@ async function refresh() {
     $('manual').textContent = state.mode === 'manual' ? 'Session started' : 'Start session';
     $('mode-note').textContent = state.mode === 'auto'
       ? 'Automatic shows Claude Code activity from the last 5 minutes, including supported desktop Code sessions. For regular Claude desktop chat, use Start session and Stop sharing.'
-      : 'Manual sessions stay on until you stop them or quit this app.';
+      : state.config.alwaysOn
+        ? 'Always on: sharing starts whenever this app runs. Stop sharing pauses it until the app next starts.'
+        : 'Manual sessions stay on until you stop them or quit this app.';
     drawTimer();
   } catch {
     $('status').textContent = 'The local companion is offline. Open Start Anthropic Discord Presence again.';
@@ -86,8 +89,8 @@ $('settings').addEventListener('submit', async event => {
   try {
     await request('/api/config', { clientId: $('clientId').value, image: $('image').value,
       shareProject: $('share-project').checked, projectName: $('project-name').value,
-      automaticOnStart: state.config.automaticOnStart });
-    $('save-status').textContent = 'Saved. Choose Start session or Automatic.';
+      automaticOnStart: state.config.automaticOnStart, alwaysOn: state.config.alwaysOn });
+    $('save-status').textContent = state.config.alwaysOn ? 'Saved. Always on is sharing.' : 'Saved. Choose Start session or Automatic.';
     await refresh();
   } catch (error) { $('save-status').textContent = error.message; }
 });
@@ -111,6 +114,20 @@ $('automatic-start').addEventListener('change', async () => {
   } catch (error) {
     $('automatic-start').checked = ! $('automatic-start').checked;
     $('save-status').textContent = error.message;
+  }
+});
+$('always-on').addEventListener('change', async () => {
+  const alwaysOn = $('always-on').checked;
+  try {
+    // Saves the current saved settings with only this choice changed; unsaved form edits stay unsaved.
+    await request('/api/config', { ...state.config, alwaysOn });
+    await refresh();
+    $('save-status').textContent = alwaysOn
+      ? 'Always on. Sharing now, and every time this app starts.'
+      : 'Always on is off. The current session continues until Stop sharing.';
+  } catch (error) {
+    $('always-on').checked = !alwaysOn;
+    $('save-status').textContent = state?.config.clientId ? error.message : 'Save a valid application ID first, then turn on Always on.';
   }
 });
 if (hosted) {

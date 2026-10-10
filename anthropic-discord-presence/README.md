@@ -10,6 +10,7 @@ A free Windows companion for sharing Claude activity on Discord, with locally de
 2. Extract the download and double-click **Start Anthropic Discord Presence.cmd**.
 3. Keep Discord desktop open with activity sharing enabled. Choose **Automatic** for Claude Code, or **Start session** for regular Claude desktop chat.
 4. Optional: turn on **Run on Windows startup**, or double-click **Enable Automatic Startup.cmd**. Keep the extracted folder in place.
+5. Optional: in Settings, turn on **Always on** to share whenever the app is running. Together with Windows startup, the card is up all day without clicking anything.
 
 The Discord application ID and hosted image are included. No API key, bot token, account connection or art upload is needed. Settings and custom applications are optional.
 
@@ -26,6 +27,8 @@ Both companions can run together, but Discord may display only one activity at a
 Automatic requires Claude Code conversation activity recorded within the last five minutes, including desktop Code sessions when supported local metadata is available. An open Claude app or a recently touched transcript file does not count. Model and effort labels come from parsed session metadata.
 
 Regular Claude desktop chat has no reliable automatic detector here. Use **Start session** when you begin and **Stop sharing** when you finish; unavailable model metadata is labeled **Using Claude**.
+
+**Always on** starts a session every time the app launches, including at Windows sign-in, and turning it on starts one immediately. Use it for Claude on the web, desktop chat and cloud sessions, which leave nothing on this computer to detect. The card shows **Using Claude**, or the exact model and effort while Claude Code on this computer reports them. **Stop sharing** pauses it until the next launch. It is off by default.
 
 **Start session** stays active until **Stop sharing** or **Quit app**. The timer measures this companion’s continuous active session, not model computation time. Closing the browser tab leaves the companion running.
 
