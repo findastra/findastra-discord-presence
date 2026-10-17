@@ -2,7 +2,7 @@
   "desktop_scale": 1,
   "alpha": "Desktop renderer thresholds partial alpha to prevent magenta color-key flecks",
   "sparkles": false,
-  "renderer": "astras-pet-apps/scripts/desktop-pets-20261011.cs",
+  "renderer": "astras-pet-os/scripts/desktop-pets-20261011.cs",
   "status": "draft",
   "date": "2026-10-11",
   "art_files": [
@@ -20,6 +20,6 @@
   "creator": "Astra",
   "scale_reference": "Standard 58.75 logical-pixel height, with aspect-ratio width clamp before scaling",
   "assistant": "OpenAI Codex (GPT-6)",
-  "notes": "VR headset resting above visible face; controller in hand. Presence project label corrected to Astra's Pet Apps.",
+  "notes": "VR headset resting above visible face; controller in hand. Presence project label corrected to Astra's PetOS.",
   "pet": "discord-damsel"
 }

@@ -4,16 +4,21 @@
   "owner": "Astra",
   "sprite": "pet-sprite-20261008.json",
   "art_key": "discord-damsel",
-  "job": "Manages the Discord presence apps (OpenAI and Anthropic) and other Discord apps.",
+  "job": "Opens the installed OpenAI and Anthropic Discord presence controls, with a manual setup checklist.",
   "runs_on": "Modern browser for the pet interface; original application requirements remain in README.md.",
   "entry": "findastra-discord-presence-20261008.html",
   "status": "hatching",
   "cage": {
     "topic": "pet-app",
-    "home": "https://github.com/findastra/astras-pet-apps"
+    "home": "https://github.com/findastra/astras-pet-os"
   },
   "version": "0.1.1-20261008-pets",
   "source": "https://github.com/findastra/findastra-discord-presence/tree/v0.1.1-20261008-pets",
   "built_with": "OpenAI Codex (GPT-6), 2026-10-08",
-  "desktop_pet": "desktop-pet-20261011.json"
+  "desktop_pet": "desktop-pet-20261011.json",
+  "audit": {
+    "cadence": "weekly",
+    "subject": "the OpenAI and Anthropic presence apps",
+    "needs": "Discord open with activity sharing on"
+  }
 }
