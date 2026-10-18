@@ -1,0 +1,55 @@
+{
+  "about": "Discord Tower's server list: each Discord server Discord Damsel helps manage, its channels and the tools tied to them. No webhook URLs, tokens or IDs here; those stay on Astra's PC (see discord-tower/README.md). Astra, 2026-10-17.",
+  "servers": [
+    {
+      "id": "press-plai",
+      "name": "Press Plai",
+      "job": "A community hub for sharing AI resources.",
+      "owner": "Astra",
+      "added": "2026-10-17",
+      "tools": [
+        {
+          "id": "discord-tower-v1.0-press-plai-agents-file-updater-v1.0",
+          "short": "press-plai-agents-file-updater",
+          "channel": "agents-file",
+          "kind": "file-updater",
+          "job": "Keeps the newest AGENTS.md and CLAUDE.md from astras-pet-os posted in #agents-file.",
+          "sources": [{ "repo": "findastra/astras-pet-os", "paths": ["AGENTS.md", "CLAUDE.md"] }]
+        },
+        {
+          "id": "discord-tower-v1.0-press-plai-skills-file-updater-v1.0",
+          "short": "press-plai-skills-file-updater",
+          "channel": "skills-file",
+          "kind": "file-updater",
+          "job": "Keeps every SKILL.md in astras-pet-os posted in #skills-file.",
+          "sources": [{ "repo": "findastra/astras-pet-os", "match": "(^|/)SKILL\\.md$" }]
+        },
+        {
+          "id": "discord-tower-v1.0-press-plai-security-file-updater-v1.0",
+          "short": "press-plai-security-file-updater",
+          "channel": "security-file",
+          "kind": "file-updater",
+          "job": "Keeps SECURITY.md, PROTECTION-RINGS.md and the farm-security skill from astras-pet-os posted in #security-file.",
+          "sources": [{ "repo": "findastra/astras-pet-os", "paths": ["SECURITY.md", "PROTECTION-RINGS.md", "skills/farm-security/SKILL.md"] }]
+        },
+        {
+          "id": "discord-tower-v1.0-press-plai-provenance-file-updater-v1.0",
+          "short": "press-plai-provenance-file-updater",
+          "channel": "provenance-file",
+          "kind": "file-updater",
+          "job": "Keeps PROVENANCE.md from astras-pet-os posted in #provenance-file.",
+          "sources": [{ "repo": "findastra/astras-pet-os", "paths": ["PROVENANCE.md"] }]
+        },
+        {
+          "id": "discord-tower-v1.0-press-plai-ask-astra-bot-v1.0",
+          "short": "press-plai-ask-astra-bot",
+          "channel": "ask-astra-bot",
+          "kind": "chat-bot",
+          "job": "Lets server members @ the bot in #ask-astra-bot and get an answer from Claude, the way #ask-ken-bot works.",
+          "third_party": "OpenClaw with its Discord channel (ring 5, community tier). Not installed by any agent.",
+          "setup": "docs/press-plai-ask-astra-bot-20261017.md"
+        }
+      ]
+    }
+  ]
+}

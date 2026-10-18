@@ -74,3 +74,7 @@ click Delete (astras-pet-os farm-security, section 10). Added with Claude Opus 5
 
 ## Desktop pet update - 2026-10-11
 VR headset resting above visible face; controller in hand. Presence project label corrected to Astra's Pet Apps. Desktop artwork status: draft. Manifest: [desktop-pet-20261011.json](desktop-pet-20261011.json). The native companion renders this art; existing browser interface behavior is unchanged. Generated character artwork uses OpenAI image generation; source sheets and derived frames are included where applicable. Public credit: Astra. Integrated by OpenAI Codex (GPT-6).
+
+## Discord Tower: servers (2026-10-17)
+
+Discord Damsel now manages Discord servers too. **Press Plai**, a community hub for sharing AI resources, has five tools, one per channel: four file updaters that keep the newest astras-pet-os files posted in #agents-file, #skills-file, #security-file and #provenance-file, and the Ask Astra bot for #ask-astra-bot. How to turn them on: [discord-tower/README.md](discord-tower/README.md). Every tool starts OFF; webhooks stay on your PC. Added with Claude Opus 5.5, 2026-10-17.
