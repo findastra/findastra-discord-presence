@@ -156,6 +156,31 @@
         link(box, 'Its side of the connection', 'https://github.com/findastra/' + c.repo + '#discord-damsel', '');
       }
       h('p', 'The switches start OFF and are saved in this browser only: the core does not enforce them yet (PET-PROGRAM-FRAMEWORK.md, section 4).', 'muted', panel); }
+    // Local archive review lives on its own page; this panel controls only its launcher.
+    { const panel = panelBox('discord-damsel-dm-archive-tool-panel');
+      const box = h('fieldset', undefined, 'tool-box', panel);
+      h('legend', 'discord-tower-v1.0-dm-archive-v0.1', '', box);
+      h('h3', 'DM archive review', '', box);
+      h('p', 'Check a saved conversation and its media, then search messages with the original text and timestamp strings.', 'muted', box);
+      let enabled = true, maintenance = false;
+      const power = button(box, 'ON', () => { enabled = !enabled; renderLauncher(); }, 'switch');
+      const health = button(box, 'Working', () => { maintenance = !maintenance; renderLauncher(); }, 'switch');
+      const status = h('p', '', 'muted', box); status.setAttribute('role', 'status');
+      const open = link(box, 'Open archive review', 'discord-damsel-archive-review-20261020.html');
+      function renderLauncher() {
+        power.textContent = enabled ? 'ON' : 'OFF'; power.setAttribute('aria-pressed', String(enabled));
+        power.title = 'Enable or disable this launcher only. An open review tab is independent.';
+        health.textContent = maintenance ? 'Needs maintenance' : 'Working';
+        health.setAttribute('aria-pressed', String(maintenance)); health.style.background = maintenance ? '#f3ca55' : '#75b8ef';
+        health.title = 'Mark this launcher for maintenance in this tab only.';
+        open.href = enabled ? 'discord-damsel-archive-review-20261020.html' : '#';
+        open.setAttribute('aria-disabled', String(!enabled));
+        open.onclick = (event) => { if (!enabled) event.preventDefault(); };
+        status.textContent = !enabled ? 'Launcher off.' : maintenance ? 'Marked for maintenance in this tab.' : 'Viewer available · no archive loaded here.';
+      }
+      renderLauncher();
+      h('p', 'Export with DiscordChatExporter separately. This launcher does not read messages, start exports or delete anything. Its switches affect this tab only.', 'muted', box);
+    }
     checklist('Presence checklist', ['Discord desktop is running.', 'Activity sharing is enabled in Discord.', 'The intended companion is running.', 'The profile card was inspected in Discord.', 'If both apps are running, the visible result was checked rather than assumed.']); notesCard();
     // Related pets (Astra, 2026-10-19): the pets Discord Damsel talks to, from the relations in astras-pet-os
     // (pets.json and the System Map), each linked to its pet program page there. Pictures come from the hub (A58).

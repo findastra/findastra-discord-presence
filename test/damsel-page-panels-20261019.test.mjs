@@ -37,7 +37,7 @@ function openPage() {
 
 test('every panel is a details.panel that starts open, with only its label in the summary', () => {
   const { panels } = openPage();
-  assert.deepEqual(panels.map((p) => text(p.children[0])), ['discord-damsel-servers-tool-panel', 'discord-damsel-L2-tool-panel']);
+  assert.deepEqual(panels.map((p) => text(p.children[0])), ['discord-damsel-servers-tool-panel', 'discord-damsel-L2-tool-panel', 'discord-damsel-dm-archive-tool-panel']);
   for (const p of panels) {
     assert.equal(p.className, 'panel');
     assert.equal(p.open, true);
@@ -69,4 +69,22 @@ test('the panel and tool box styles put the labels in the border', () => {
   assert.match(css, /\.panel>summary\{position:absolute;top:-\.8em/);
   assert.match(css, /\.tool-box\{border:1px solid/);
   assert.match(css, /\.tool-box legend\{/);
+});
+
+test('archive launcher opens the separate viewer and its OFF control disables navigation', () => {
+  const {panels}=openPage();
+  const archive=panels[2], elements=all(archive);
+  const open=elements.find(e=>e.tagName==='A');
+  const power=elements.find(e=>e.tagName==='BUTTON' && e.textContent==='ON');
+  const health=elements.find(e=>e.tagName==='BUTTON' && e.textContent==='Working');
+  assert.equal(open.href,'discord-damsel-archive-review-20261020.html');
+  power.onclick();
+  let prevented=false;
+  open.onclick({preventDefault(){prevented=true;}});
+  assert.equal(prevented,true);
+  assert.equal(open.getAttribute('aria-disabled'),'true');
+  power.onclick();
+  assert.equal(open.href,'discord-damsel-archive-review-20261020.html');
+  health.onclick();
+  assert.match(text(archive),/Marked for maintenance in this tab/);
 });

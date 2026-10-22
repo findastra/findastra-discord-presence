@@ -61,7 +61,10 @@
       "intended_use": "Shows every Discord server Astra is in, each opening to its stickers, and resets her favorite stickers to the ones she picks, after she confirms. Reads the Discord app's own server, sticker and favorites lists; changes only the favorite stickers, through Discord's own settings saver. No requests of its own, no token.",
       "visibility": "public",
       "runs_on": "Discord desktop with BetterDiscord (third-party), this PC only",
-      "third_party": ["Discord", "BetterDiscord"],
+      "third_party": [
+        "Discord",
+        "BetterDiscord"
+      ],
       "added": "2026-10-18",
       "built_with": "Claude Opus 5.5 (claude-opus-5-5), 2026-10-18",
       "links": {
@@ -76,7 +79,9 @@
       "intended_use": "Looks after CLI Proxy API, a third-party program: installs only the verified v8.0.34 from quarantine, writes a config that keeps it on 127.0.0.1 with plugins and discovery off, and starts and stops it from a control page on this PC. Refuses to start with a Claude sign-in in its folder. Never signs anything in; Start is Astra's click.",
       "visibility": "public",
       "runs_on": "Windows, this PC only (controls http://127.0.0.1:38763/, proxy and console http://127.0.0.1:8317/)",
-      "third_party": ["CLI Proxy API"],
+      "third_party": [
+        "CLI Proxy API"
+      ],
       "data": "%USERPROFILE%\\.cli-proxy-api (outside the repo and outside AppData)",
       "added": "2026-10-18",
       "built_with": "Claude Opus 5.5 (claude-opus-5-5), 2026-10-18",
@@ -87,8 +92,45 @@
     }
   ],
   "third_party_programs": [
-    { "name": "Discord", "made_by": "Discord Inc.", "used_by": ["openai-discord-presence", "anthropic-discord-presence", "sticker-manager"], "link": "https://discord.com/download" },
-    { "name": "BetterDiscord", "made_by": "BetterDiscord (community)", "used_by": ["sticker-manager"], "link": "https://betterdiscord.app/" },
-    { "name": "CLI Proxy API", "made_by": "router-for-me (MIT)", "version": "v8.0.34", "used_by": ["cli-proxy-api"], "link": "https://github.com/router-for-me/CLIProxyAPI" }
+    {
+      "name": "Discord",
+      "made_by": "Discord Inc.",
+      "used_by": [
+        "openai-discord-presence",
+        "anthropic-discord-presence",
+        "sticker-manager"
+      ],
+      "link": "https://discord.com/download"
+    },
+    {
+      "name": "BetterDiscord",
+      "made_by": "BetterDiscord (community)",
+      "used_by": [
+        "sticker-manager"
+      ],
+      "link": "https://betterdiscord.app/"
+    },
+    {
+      "name": "CLI Proxy API",
+      "made_by": "router-for-me (MIT)",
+      "version": "v8.0.34",
+      "used_by": [
+        "cli-proxy-api"
+      ],
+      "link": "https://github.com/router-for-me/CLIProxyAPI"
+    }
+  ],
+  "programs": [
+    {
+      "name": "dm-archive-review",
+      "label": "discord-tower-v1.0-dm-archive-v0.1",
+      "version": "0.1.0",
+      "panel": "discord-damsel-dm-archive-tool-panel",
+      "visibility": "public",
+      "entry": "discord-damsel-archive-review-20261020.html",
+      "intended_use": "Read user-selected DiscordChatExporter JSON and media locally without changing messages or timestamp strings. Check counts and media presence; cannot prove a complete Discord history.",
+      "data": "User-selected files outside the repository; read in this browser tab only.",
+      "built_with": "OpenAI Codex (GPT-6), 2026-10-20"
+    }
   ]
 }

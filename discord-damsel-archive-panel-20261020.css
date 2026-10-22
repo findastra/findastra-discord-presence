@@ -1,0 +1,47 @@
+/* By Astra. OpenAI Codex (GPT-6), 2026-10-19. Scoped styles for the review candidate. */
+.da-panel{position:relative;border:1px solid #6d6578;border-radius:18px;padding:30px 22px 18px;margin-top:18px;color:#f3f0f7;background:#17161d;font:15px/1.6 system-ui,sans-serif;min-width:0;color-scheme:dark}
+.da-panel *{box-sizing:border-box}
+.da-panel>summary{position:absolute;top:-.8em;left:18px;max-width:calc(100% - 36px);list-style:none;cursor:pointer;background:#17161d;padding:0 8px}
+.da-panel>summary::-webkit-details-marker{display:none}
+.da-panel>summary .legend{font:13px/1.6 ui-monospace,monospace;color:#bcb9ff;overflow-wrap:anywhere}
+.da-panel:not([open]){padding:14px 22px 0}
+.da-panel h2{font-size:26px;line-height:1.25;letter-spacing:-.5px;margin:8px 0}
+.da-panel h3{font-size:17px;margin:0 0 8px}
+.da-panel p{margin:8px 0 14px}
+.da-toolbar,.da-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 14px}
+.da-toolbar p{margin:0 0 0 auto;font-size:12px}
+.da-panel button,.da-panel a,.da-panel summary,.da-panel input,.da-panel select{outline-offset:4px}
+.da-panel button:focus-visible,.da-panel a:focus-visible,.da-panel summary:focus-visible,.da-panel input:focus-visible,.da-panel select:focus-visible{outline:3px solid #e7b0e8}
+.da-panel button{font:inherit;border:1px solid #8e88c6;border-radius:9px;background:#bcb9ff;color:#17161d;padding:9px 14px;cursor:pointer;min-height:42px}
+.da-panel button:disabled{opacity:.45;cursor:default}
+.da-panel a{color:#d5d2ff;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
+.da-panel .da-light{font-size:12px;padding:6px 10px;min-height:36px;background:#25232e;color:#e4dff0;border-color:#5c556b}
+.da-panel .da-on{color:#93e9b2}.da-panel .da-off{color:#ffa2ab}.da-panel .da-ready{color:#a0ceff}.da-panel .da-paused{color:#ffe48c}
+.da-panel .da-demo{margin-left:auto;font-size:12px;background:transparent;color:#d5d2ff}
+.da-tool{border:1px solid #6d6578;border-radius:12px;padding:14px 20px 20px;min-width:0;background:#23212c}
+.da-tool>legend{padding:0 8px;color:#bcb9ff;font:12px/1.6 ui-monospace,monospace;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.da-muted{color:#b6b0c3;font-size:13px}
+.da-steps{list-style:none;counter-reset:steps;display:flex;flex-wrap:wrap;gap:14px;padding:0;margin:22px 0}
+.da-steps li{counter-increment:steps;color:#dedbef;font-size:13px;display:flex;align-items:center;gap:8px}
+.da-steps li:before{content:counter(steps);border:1px solid #6a6380;border-radius:50%;width:25px;height:25px;display:grid;place-items:center;background:#302c40;color:#d5d2ff}
+.da-section{border-top:1px solid #47414f;padding-top:18px;margin-top:18px}
+.da-section>summary{font-weight:650;font-size:17px;cursor:pointer;margin-bottom:12px}
+.da-settings{font:12px/1.75 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;background:#191720;border:1px solid #47414f;border-radius:9px;padding:14px;color:#dad4e6}
+.da-imports{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.da-file-label{display:flex;flex-direction:column;gap:7px;font-size:13px;margin:12px 0;min-width:0}
+.da-panel input,.da-panel select{max-width:100%;width:100%;font:inherit;background:#191720;border:1px solid #696172;border-radius:9px;padding:10px;color:#f3f0f7;min-height:44px}
+.da-panel input[type=file]{font-size:12px;overflow:hidden}
+.da-panel input::file-selector-button{background:#363044;color:#f3f0f7;border:0;border-radius:5px;padding:6px;margin-right:8px;cursor:pointer}
+.da-results{border:1px solid #6a6086;background:#2b263b;padding:16px;border-radius:12px;margin:18px 0}
+.da-results strong{font-size:16px}.da-results p:last-child{margin-bottom:0}
+.da-boundaries{font:12px/1.75 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+.da-findings{font-size:13px}.da-findings summary{cursor:pointer}.da-findings ul{max-height:220px;overflow:auto;overflow-wrap:anywhere;padding-left:22px}
+.da-notice{border-left:3px solid #d8b373;padding:8px 12px;background:#302b2a;color:#e4ccb0;font-size:13px}
+.da-message{border:1px solid #423c4c;background:#1e1b26;border-radius:10px;padding:16px;margin:10px 0;overflow-wrap:anywhere}
+.da-message-head{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline}
+.da-message-head strong{color:#d2c2f6;font-size:14px}.da-timestamp{font:11px/1.6 ui-monospace,monospace;color:#aaa3b7}
+.da-content{white-space:pre-wrap;font-size:14px}.da-message-meta{font-size:12px;color:#b6b0c3}.da-message-meta summary{cursor:pointer}
+.da-attachment{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px;background:#292431;border-radius:8px;margin-top:12px;font-size:12px}
+.da-attachment video,.da-attachment img{display:block;max-width:100%;max-height:340px;width:auto;border-radius:7px}
+.da-cleanup{color:#b6b0c3}.da-cleanup>summary{font-size:14px}
+@media(max-width:640px){.da-panel{padding:30px 12px 14px}.da-tool{padding:12px}.da-panel h2{font-size:22px}.da-imports{grid-template-columns:1fr;gap:0}.da-toolbar p{flex-basis:100%;margin:0}.da-panel>summary{left:10px;max-width:calc(100% - 20px)}.da-panel>summary .legend{font-size:11px}.da-message{padding:12px}.da-steps{gap:8px}.da-steps li{font-size:11px}.da-panel .da-demo{margin-left:0}}

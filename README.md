@@ -155,3 +155,18 @@ What is not done, plainly. From the hub's [intelligence levels](https://github.c
 - **Program (L1/L2):** ✅ **Made by Astra:** *Presence Tower*: [OpenAI Discord Presence](https://github.com/findastra/findastra-discord-presence/tree/main/openai-discord-presence) and [Anthropic Discord Presence](https://github.com/findastra/findastra-discord-presence/tree/main/anthropic-discord-presence) tray apps, the [Sticker Manager](discord-tower/sticker-manager/README.md) BetterDiscord plugin and the [CLI Proxy API manager](discord-tower/cli-proxy-api/README.md); **Made by others:** Discord, BetterDiscord, CLI Proxy API
 - **Runtime (L2):** ✅ **Does:** both presence apps start at sign-in and show live Codex and Claude Code activity on Discord. No inbox
 - **Agentic harness (L3):** — not built yet
+
+### Native program: DM archive review
+
+Open **[DM archive review](discord-damsel-archive-review-20261020.html)** from Damsel's
+`discord-damsel-dm-archive-tool-panel`. Export HTML (Dark), JSON and downloaded assets with
+DiscordChatExporter separately, then choose the export folder in the viewer. Search and pagination keep
+long conversations manageable. Original message text and timestamp strings are displayed unchanged.
+
+The viewer checks JSON counts, duplicate IDs and local media presence, nonzero size and recorded sizes.
+It reports remote references and missing assets; it cannot prove the export contains the entire Discord history
+or verify media contents. Select files only from a private folder outside this repository. No uploads,
+Discord credentials, automated export or deletion are implemented. Turning the viewer off clears its loaded
+files; the launcher switches affect only that launcher tab. The example is fictional.
+
+Source and integration: OpenAI Codex (GPT-6), 2026-10-20. By Astra.
